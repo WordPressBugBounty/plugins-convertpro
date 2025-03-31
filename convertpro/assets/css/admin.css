@@ -1,0 +1,772 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+p {
+    margin: 0;
+    font-family: "Inter", sans-serif;
+}
+a:focus {
+    box-shadow: none;
+}
+.title-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.convertpro-title-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.convertpro-title-btn h4 {
+    font-family: 'Inter';
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 28px;
+    text-align: left;
+    color: #080E13;
+    margin: 0px;
+}
+
+td.button-col {
+    float: right;
+    display: flex;
+    align-items: center;
+}
+.convertpro-test-index table.widefat {
+    border: 1px solid #D2D2D2;
+    box-shadow: none;
+    padding: 20px;
+    border-radius: 10px;
+}
+.convertpro-test-index .widefat td {
+    padding: 16px 12px 16px 20px;
+}
+.striped>tbody>:nth-child(even) {
+    background-color: rgba(8, 14, 19, 0.05);
+}
+.convertpro-test-index .wp-list-table a {
+    transition: none;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+    color: #080E13;
+    box-shadow: none;
+}
+
+a.report-button {
+    background-color: #fff;
+    padding: 9px 11px;
+    border: 1px solid rgba(8, 14, 19, 0.1);
+    border-radius: 7px;
+    font-size: 12px;
+    line-height: 21px;
+    font-weight: 500;
+    font-family: 'Inter';
+    color: #080E13;
+    display: inline-block;
+    outline: none;
+    box-shadow: none;
+    margin-right: 5px;
+}
+a.edit-button {
+    background-color: #fff;
+    padding: 7px 11px;
+    border: 1px solid rgba(8, 14, 19, 0.1);
+    border-radius: 7px;
+    display: inline-block;
+    outline: none;
+    box-shadow: none;
+}
+
+.delete-form {
+    border-left: 1px solid rgba(8, 14, 19, 0.1);
+    margin-left: 15px;
+    padding-left: 15px;
+}
+
+.convertpro-content-wrapper {
+    margin: 0px auto;
+    width: 100%;
+}
+.convertpro-create-wrapper {
+    max-width: 560px;
+    margin: 0px auto;
+    width: 100%;
+}
+
+.back-test svg path{
+    stroke: rgba(8, 14, 19, 0.5);
+}
+.test-top-area {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+.create-update-test h4 {
+    margin: 0px;
+    font-family: 'Inter';
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 28px;
+    text-align: center;
+    color: #080E13;
+}
+
+.test-conversion-page h4 {
+    margin: 0;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: left;
+    color: #000000;
+
+}
+
+.test-conversion-page p {
+    font-family: 'Inter';
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    color: rgba(8, 14, 19, 0.8);
+    margin: 0;
+    margin-top: 5px;
+    margin-bottom: 20px;
+}
+#test-conversion-page,
+.test-type-select select{
+    max-width: 100%;
+    height: 40px;
+    border: 1px solid #CBD2D9 !IMPORTANT;
+    border-radius: 8px;
+    box-shadow: none !IMPORTANT;
+    outline: 0;
+}
+.create-update-test {
+    margin-left: 70px;
+}
+.wp-list-table {
+    margin-top: 20px;
+}
+
+.convertpro-content-wrapper label {
+    display: block;
+}
+
+input.text-name {
+    width: 100%;
+    outline: none;
+    box-shadow: none;
+}
+.convertpro-content-wrapper form select {
+    max-width: none;
+}
+
+.submit-btn {
+    margin-top: 20px;
+}
+
+.convertpro-test-variations .headline {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    color: rgba(0, 0, 0,0.6);
+    font-family: 'Inter';
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    margin-bottom: 10px;
+}
+
+.test-addvariation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.convertpro-test-variations .name input,
+.convertpro-test-variations .convertpro-class-gen input {
+    border: 0;
+    border-right: 1px solid #CBD2D9;
+    border-radius: 8px;
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    -ms-border-radius: 8px;
+    -o-border-radius: 8px;
+    padding: 0;
+    min-height: 40px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    color: #080E13;
+}
+.test-conversion-url-wrapper input {
+    width: 100%;
+}
+.convertpro-data-variation .name input[type=text]:focus,
+.convertpro-data-variation .convertpro-class-gen input[type=text]:focus {
+    box-shadow: none;
+    border: 0;
+    border-right: 1px solid #CBD2D9;
+}
+
+.convertpro-data-variation .name {
+    width: 30%;
+}
+
+.convertpro-data-variation .post {
+    width: 40%;
+}
+
+.convertpro-data-variation .post select:hover {
+    color: #080E13;
+}
+.convertpro-data-variation .post select:focus {
+    box-shadow: none;
+    border: 0;
+    border-right: 1px solid #CBD2D9;
+    border-left: 1px solid #CBD2D9;
+}
+.convertpro-data-variation .percentage {
+    width: 30%;
+}
+.convertpro-variations-elements .convertpro-data-variation .percentage {
+    width: 30%;
+    border-left: 1px solid #CBD2D9;
+    padding: 0px 10px;
+    border-right: 1px solid #CBD2D9;
+}
+.convertpro-data-variation .percentage input {
+    border: 0;
+    border-radius: 8px;
+    min-height: 40px;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+    width: 100%;
+    color: #080E13;
+    padding: 0px 5px;
+    margin: 0px;
+}
+.convertpro-data-variation .percentage input:focus {
+    border: 0;
+    box-shadow: none;
+    outline: none;
+}
+
+.title-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.convertpro-title-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.convertpro-title-btn h2 {
+    font-family: 'Inter';
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 28px;
+    text-align: left;
+    color: #080E13;
+    margin: 0px;
+}
+
+.convertpro-title-btn a.add-test-button {
+    width: 120px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    border-radius: 8px;
+    background-color: #080E13;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+    text-align: center;
+    color: #fff;
+    outline: none;
+    box-shadow: none;
+
+}
+.convertpro-title-btn span svg {
+    margin-top: 5px;
+    margin-right: 5px;
+}
+td.button-col {
+    float: right;
+    display: flex;
+    align-items: center;
+}
+.convertpro-test-index table.widefat {
+    border: 1px solid #D2D2D2;
+    box-shadow: none;
+    padding: 20px;
+    border-radius: 10px;
+}
+.striped>tbody>:nth-child(odd) {
+    background-color: rgba(8, 14, 19, 0.03);
+}
+.striped>tbody>:nth-child(even) {
+    background-color: rgba(8, 14, 19, 0.05);
+}
+.convertpro-test-index .wp-list-table a {
+    transition: none;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+    color: #080E13;
+    box-shadow: none;
+}
+input.delete-button {
+    font-size: 0;
+    background-color: #fff;
+    padding: 20px 20px;
+    border: 1px solid rgba(8, 14, 19, 0.1);
+    border-radius: 7px;
+    display: inline-block;
+    cursor: pointer;
+}
+a.report-button {
+    background-color: #fff;
+    padding: 9px 11px;
+    border: 1px solid rgba(8, 14, 19, 0.1);
+    border-radius: 7px;
+    font-size: 12px;
+    line-height: 21px;
+    font-weight: 500;
+    font-family: 'Inter';
+    color: #080E13;
+    display: inline-block;
+    outline: none;
+    box-shadow: none;
+    margin-right: 5px;
+}
+a.edit-button {
+    background-color: #fff;
+    padding: 7px 11px;
+    border: 1px solid rgba(8, 14, 19, 0.1);
+    border-radius: 7px;
+    display: inline-block;
+    outline: none;
+    box-shadow: none;
+}
+
+.delete-form {
+    border-left: 1px solid rgba(8, 14, 19, 0.1);
+    margin-left: 15px;
+    padding-left: 15px;
+}
+.convertpro-test-index .widefat td {
+    vertical-align: middle;
+}
+.all-test {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.back-test a {
+    align-items: center;
+    display: flex;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+    text-align: center;
+    color: rgba(8, 14, 19, 0.5);
+    box-shadow: none;
+    text-decoration: none;
+}
+.back-test svg path{
+    stroke: rgba(8, 14, 19, 0.5);
+}
+.test-top-area {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+.create-update-test h4 {
+    margin: 0px;
+    font-family: 'Inter';
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 28px;
+    text-align: center;
+    color: #080E13;
+}
+.test-button-save {
+    background-color: #080E13;
+    color: #fff;
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    border: none;
+    box-shadow: none;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+    text-align: center;
+    cursor: pointer;
+
+}
+.test-conversion-page h4 {
+    margin: 0;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: left;
+    color: #000000;
+
+}
+
+.convertpro-conversion-page-wrapper,
+.convertpro-test-variations,
+.test-top-wrap{
+    border: 1px solid #D2D2D2;
+    padding: 25px;
+    border-radius: 10px;
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    -ms-border-radius: 10px;
+    -o-border-radius: 10px;
+    background-color: #FFFFFF;
+    clear: both;
+}
+.test-conversion-page p {
+    font-family: 'Inter';
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    color: rgba(8, 14, 19, 0.8);
+    margin: 0;
+    margin-top: 5px;
+    margin-bottom: 20px;
+}
+
+.create-update-test {
+    margin-left: 70px;
+}
+.wp-list-table {
+    margin-top: 20px;
+}
+
+.convertpro-content-wrapper label {
+    display: block;
+}
+
+input.text-name {
+    width: 100%;
+    outline: none;
+    box-shadow: none;
+    border: 0;
+    border: 1px solid #CBD2D9;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 8px;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    color: #080E13;
+}
+input.text-name:focus,
+.convertpro-uri-wrapper input:focus {
+     border: 1px solid #CBD2D9;
+     box-shadow: none;
+}
+
+.submit-btn {
+    margin-top: 20px;
+}
+
+.test-addvariation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.convertpro-data-variation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    border: 1px solid #CBD2D9;
+    height: 40px;
+    border-radius: 8px;
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    -ms-border-radius: 8px;
+    -o-border-radius: 8px;
+    padding-right: 4px;
+}
+
+
+.test-conversion-url-wrapper input {
+    width: 100%;
+}
+
+.convertpro-data-variation .post select {
+    width: 99%;
+    border: 0;
+    border-right: 1px solid #CBD2D9;
+    border-radius: 0;
+    min-height: 40px;
+    box-shadow: none;
+    outline: none;
+    border-left: 1px solid #CBD2D9;
+    color: #080E13;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+}
+.convertpro-data-variation .post select:hover {
+    color: #080E13;
+}
+
+.test-name-wrap label,
+.convertpro-headline label,
+.test-type-title h2 {
+    color: #000000;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: left;
+    margin-bottom: 5px;
+    display: block;
+    cursor: auto;
+}
+.test-name-wrap p,
+.convertpro-headline p {
+    font-family: 'Inter';
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    color: #080E13;
+    margin-bottom: 20px;
+}
+.convertpro-headline span {
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    color: #080E13;
+}
+.convertpro-test-variations {
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+ a.vari-btn {
+    background: #F6F7F7;
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #080E13;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    color: #080E13;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+.variation-btn {
+    margin-top: 20px;
+}
+.vari-btn svg path {
+    stroke: #080E13;
+    transform: translateY(3px);
+    -webkit-transform: translateY(3px);
+    -moz-transform: translateY(3px);
+    -ms-transform: translateY(3px);
+    -o-transform: translateY(3px);
+}
+.vari-btn span {
+    margin-right: 8px;
+}
+.back-test a svg {
+    margin-right: 10px;
+}
+.url-identfier {
+    display: flex;
+    align-items: center;
+}
+
+.url-identfier input {
+    flex: 1;
+    width: 100%;
+    outline: none;
+    box-shadow: none;
+    border: 0;
+    border: 1px solid #CBD2D9;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 8px;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    color: #080E13;
+}
+
+.url-identfier span {
+    margin-right: 10px;
+}
+
+a.pageview-btn {
+    text-decoration: none;
+    padding: 10px 16px;
+    background: #080E13;
+    display: inline-block;
+    color: #fff;
+    margin-top: 12px;
+    border-radius: 8px;
+    -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    -ms-border-radius: 8px;
+    -o-border-radius: 8px;
+}
+
+.convertpro-pageview {
+    display: block;
+    text-align: right;
+}
+.button-delete {
+    background: #080E13;
+    padding: 6px 0px;
+    min-width: 30px;
+    border-radius: 5px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 5px;
+}
+.convertpro-test-variations.convertpro-variations-elements .post {
+    display: none;
+}
+.convertpro-test-variations.convertpro-variations-posts .convertpro-class-gen{
+    display: none;
+}
+.convertpro-test-variations.convertpro-variations-posts .convertpro-class-gen input {
+    display: none;
+}
+.convertpro-class-gen {
+    width: 30%;
+}
+
+.convertpro-class-gen input {
+    width: 100%;
+    border-radius: 0 !important;
+}
+.convertpro-class-gen {
+    position: relative;
+    display: inline-block;
+}
+
+.copy-button {
+    display: none;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #080E13;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.convertpro-class-gen:hover .copy-button {
+    display: block;
+}
+
+/*report css*/
+
+.convertpro-data-table h4 {
+    font-family: 'Inter';
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 28px;
+    text-align: left;
+    color: #080E13;
+    margin: 0;
+    margin-top: 30px;
+    margin-bottom: 14px;
+}
+
+.convertpro-fullreport {
+    background: #fff;
+    border: 1px solid #E8E8E8;
+    border-radius: 10px;
+}
+
+.convertpro-fullreport table td {
+    border: 0px;
+    padding: 0;
+    padding: 16px 12px;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: center;
+    color: #080E13;
+}
+.convertpro-fullreport table tr {
+    border-bottom: 1px solid #E8E8E8;
+    /* padding: 22px 28px; */
+}
+.convertpro-fullreport table tr:last-child {
+    border-bottom: 0px;
+}
+.convertpro-fullreport table {
+    margin: 0;
+}
+.convertpro-fullreport table th {
+    font-family: 'Inter';
+    text-transform: uppercase;
+    padding: 16px 12px;
+    color: #7C838A;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: center;
+}
