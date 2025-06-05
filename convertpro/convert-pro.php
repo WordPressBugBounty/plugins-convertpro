@@ -2,10 +2,10 @@
 use Finestics\Client;
 
 /*
- * Plugin Name: ConvertPro - Simplify A/B Testing
+ * Plugin Name: EasyTest - Simplify A/B Testing (Former ConvertPro)
  * Plugin URI: https://wpgrids.com/
- * Description: ConvertPro allows you to ab testing.
- * Version: 1.0.0
+ * Description: EasyTest allows you to ab testing.
+ * Version: 1.0.1
  * Author: wpgrids
  * Author URI: https://profiles.wordpress.org/wpgrids/
  * Text Domain: convertpro
@@ -40,7 +40,7 @@ final class ConvertPro
      *
      * @var string
      */
-    public $version = '0.1.0';
+    public $version = '1.0.1';
 
     /**
      * Holds various class instances

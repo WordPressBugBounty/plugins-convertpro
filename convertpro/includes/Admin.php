@@ -29,7 +29,7 @@ class Admin
         $capability = 'manage_options';
         $slug       = 'convertpro-settings';
 
-        $hook = add_menu_page(__('ConvertPro', 'convertpro'), __('ConvertPro', 'convertpro'), $capability, $slug, [$this, 'ab_tester_settings'], 'dashicons-text');
+        $hook = add_menu_page(__('EasyTest', 'convertpro'), __('EasyTest', 'convertpro'), $capability, $slug, [$this, 'ab_tester_settings'], 'dashicons-text');
         // add_submenu_page($slug, __('Settings', 'convertpro'), __('Settings', 'convertpro'), $capability, 'convertpro-settings', [$this, 'ab_tester_settings']);
         // if (current_user_can($capability)) {
         //     $submenu[$slug][] = array(__('App', 'convertpro'), $capability, 'admin.php?page=' . $slug . '#/');
