@@ -144,6 +144,12 @@ function convertpro_interactions_report_html()
 
 function convertpro_interactions_report_ajax()
 {
+    // Reporting is admin-only: enforce capability and nonce (CVE-2025-63031).
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(esc_html__('You are not allowed to access this resource.', 'convertpro'), 403);
+    }
+    check_ajax_referer('convertpro-report-nonce', 'nonce');
+
     if (!isset($_GET['id']))
         return false;
     ob_start();
@@ -151,7 +157,6 @@ function convertpro_interactions_report_ajax()
     wp_send_json(ob_get_clean());
 }
 add_action('wp_ajax_convertpro_interactions_report_ajax', 'convertpro_interactions_report_ajax');
-add_action('wp_ajax_nopriv_convertpro_interactions_report_ajax', 'convertpro_interactions_report_ajax');
 function convertpro_interactions_chart_query($id, $range = 7)
 {
     if (!$id) {
@@ -208,7 +213,11 @@ ORDER BY
 
 function convertpro_get_chart_data()
 {
-
+    // Reporting is admin-only: enforce capability and nonce (CVE-2025-63031).
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(esc_html__('You are not allowed to access this resource.', 'convertpro'), 403);
+    }
+    check_ajax_referer('convertpro-report-nonce', 'nonce');
 
     if (isset($_GET['range'])) {
         $test_id = isset($_GET['id']) ? sanitize_text_field(wp_unslash($_GET['id'])) : false;
@@ -272,7 +281,6 @@ function convertpro_get_chart_data()
 
 // Hook the AJAX handler function to a WordPress AJAX action
 add_action('wp_ajax_convertpro_get_chart_data', 'convertpro_get_chart_data');
-add_action('wp_ajax_nopriv_convertpro_get_chart_data', 'convertpro_get_chart_data');
 
 
 function convertpro_get_views($test_id, $variation_id, $range = 7)

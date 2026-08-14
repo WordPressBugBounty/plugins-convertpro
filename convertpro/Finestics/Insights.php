@@ -386,8 +386,8 @@ class Insights
 
         // don't show tracking if a local server
         if (!$this->is_local_server()) {
-            $optin_url = add_query_arg($this->client->slug . '_tracker_optin', 'true');
-            $optout_url = add_query_arg($this->client->slug . '_tracker_optout', 'true');
+            $optin_url = wp_nonce_url(add_query_arg($this->client->slug . '_tracker_optin', 'true'), $this->client->slug . '_optin_optout');
+            $optout_url = wp_nonce_url(add_query_arg($this->client->slug . '_tracker_optout', 'true'), $this->client->slug . '_optin_optout');
 
             if (empty($this->notice)) {
                 $notice = sprintf($this->client->__trans('Want to help make <strong>%1$s</strong> even more awesome? Allow %1$s to collect non-sensitive diagnostic data and usage information.'), $this->client->name);
@@ -425,19 +425,34 @@ class Insights
     public function handle_optin_optout()
     {
 
-        if (isset($_GET[$this->client->slug . '_tracker_optin']) && $_GET[$this->client->slug . '_tracker_optin'] == 'true') {
+        $slug      = $this->client->slug;
+        $is_optin  = isset($_GET[$slug . '_tracker_optin']) && $_GET[$slug . '_tracker_optin'] == 'true';
+        $is_optout = isset($_GET[$slug . '_tracker_optout']) && $_GET[$slug . '_tracker_optout'] == 'true';
+
+        if (!$is_optin && !$is_optout) {
+            return;
+        }
+
+        // Only an administrator may change the tracking preference, and only via
+        // the signed opt-in/opt-out link (guards CSRF and low-privilege users).
+        if (!current_user_can('manage_options')
+            || !isset($_GET['_wpnonce'])
+            || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), $slug . '_optin_optout')) {
+            wp_die(esc_html($this->client->__trans('You are not allowed to do this.')));
+        }
+
+        if ($is_optin) {
             $this->optin();
 
-            wp_redirect(remove_query_arg($this->client->slug . '_tracker_optin'));
+            wp_redirect(remove_query_arg(array($slug . '_tracker_optin', '_wpnonce')));
             exit;
         }
 
-        if (isset($_GET[$this->client->slug . '_tracker_optout']) && $_GET[$this->client->slug . '_tracker_optout'] == 'true') {
-            $this->optin();
+        // Was mistakenly calling optin(); honor the opt-out request.
+        $this->optout();
 
-            wp_redirect(remove_query_arg($this->client->slug . '_tracker_optout'));
-            exit;
-        }
+        wp_redirect(remove_query_arg(array($slug . '_tracker_optout', '_wpnonce')));
+        exit;
     }
 
     /**
@@ -481,7 +496,7 @@ class Insights
     {
         global $wpdb;
 
-        return (int) $wpdb->get_var("SELECT count(ID) FROM $wpdb->posts WHERE post_type = '$post_type' and post_status = 'publish'");
+        return (int) $wpdb->get_var($wpdb->prepare("SELECT count(ID) FROM $wpdb->posts WHERE post_type = %s and post_status = 'publish'", $post_type));
     }
 
     /**
@@ -739,6 +754,10 @@ class Insights
      */
     public function uninstall_reason_submission()
     {
+        if (!current_user_can('activate_plugins')) {
+            wp_send_json_error();
+        }
+        check_ajax_referer($this->client->slug . '_uninstall_reason', 'nonce');
 
         if (!isset($_POST['reason_id'])) {
             wp_send_json_error();
@@ -935,6 +954,7 @@ class Insights
                             type: 'POST',
                             data: {
                                 action: '<?php echo esc_html($this->client->slug); ?>_submit-uninstall-reason',
+                                nonce: '<?php echo esc_js(wp_create_nonce($this->client->slug . '_uninstall_reason')); ?>',
                                 reason_id: (0 === $radio.length) ? 'none' : $radio.val(),
                                 reason_info: (0 !== $input.length) ? $input.val().trim() : ''
                             },

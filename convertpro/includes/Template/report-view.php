@@ -200,7 +200,8 @@ wp_enqueue_script('chart');
                 data: {
                     action: 'convertpro_get_chart_data',
                     range: range,
-                    id: <?php echo esc_attr(sanitize_text_field(wp_unslash($_GET['id']))) ?>
+                    nonce: '<?php echo esc_js(wp_create_nonce('convertpro-report-nonce')); ?>',
+                    id: <?php echo (int) ( isset($_GET['id']) ? wp_unslash($_GET['id']) : 0 ); ?>
                 },
                 success: function(response) {
                     // Parse the JSON response
@@ -219,7 +220,8 @@ wp_enqueue_script('chart');
                 data: {
                     action: 'convertpro_interactions_report_ajax',
                     range: range,
-                    id: <?php echo esc_attr(sanitize_text_field(wp_unslash($_GET['id']))) ?>
+                    nonce: '<?php echo esc_js(wp_create_nonce('convertpro-report-nonce')); ?>',
+                    id: <?php echo (int) ( isset($_GET['id']) ? wp_unslash($_GET['id']) : 0 ); ?>
                 },
                 success: function(response) {
                     // Parse the JSON response

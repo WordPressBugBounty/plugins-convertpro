@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'wpgrids/convertpro',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => '9eb38e78d4f92e970d571a3ef90631e8a664d2e4',
+        'pretty_version' => '1.0.2',
+        'version' => '1.0.2.0',
+        'reference' => 'a61cd3652de346a3e9084eeb961f39e7cecc5789',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,9 +22,9 @@
             'dev_requirement' => false,
         ),
         'wpgrids/convertpro' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
-            'reference' => '9eb38e78d4f92e970d571a3ef90631e8a664d2e4',
+            'pretty_version' => '1.0.2',
+            'version' => '1.0.2.0',
+            'reference' => 'a61cd3652de346a3e9084eeb961f39e7cecc5789',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

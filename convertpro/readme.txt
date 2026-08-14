@@ -3,7 +3,7 @@ Contributors: wpgrids, ashrafuddin765
 Tags: ab test, split test, compare pages, element ab test  
 Requires at least: 5.0  
 Tested up to: 6.8.1  
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPL-2.0+  
 License URI: http://www.gnu.org/licenses/gpl-2.0.txt  
 
@@ -40,8 +40,14 @@ No, EasyTest is beginner-friendly and does not require any coding skills.
 2. **Compare Results** - Analyze performance differences.  
 3. **Optimize Conversions** - Improve engagement and conversions.  
 
-== Changelog ==  
+== Changelog ==
 
-= 1.0 =  
-- Initial release.  
-- Added A/B testing and page comparison features.  
+= 1.0.2 =
+- Fixed a security vulnerability reported by Patchstack (CVE-2025-63031) and hardened several other security checks.
+
+= 1.0.1 =
+- Rebranded to EasyTest - Simplify A/B Testing.
+
+= 1.0 =
+- Initial release.
+- Added A/B testing and page comparison features.

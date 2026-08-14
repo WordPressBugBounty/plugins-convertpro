@@ -14,7 +14,7 @@ class Storedatabase
     public function CreateTest()
     {
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-        if (isset($_POST['nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'convertpro-nonce')) {
+        if (current_user_can('manage_options') && isset($_POST['nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'convertpro-nonce')) {
             global $wpdb;
             $wpdb->insert(
                 $this->getTestTable(),
@@ -59,7 +59,7 @@ class Storedatabase
 
     public function updateTest($id)
     {
-        if (isset($_POST['nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'convertpro-nonce')) {
+        if (current_user_can('manage_options') && isset($_POST['nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'convertpro-nonce')) {
             global $wpdb;
 
             //  phpcs:ignore WordPress.DB.DirectDatabaseQuery
