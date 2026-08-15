@@ -1,6 +1,10 @@
 <?php
 
 namespace ConvertPro\DataBase;
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
+
 
 /**
  * create all database table
@@ -54,6 +58,9 @@ class Database
 		) $charset_collate;";
         dbDelta($sql);
 
+        // `run` groups interactions into test runs. Resetting a test bumps its run
+        // number so a fresh round of data can be collected without discarding the
+        // previous round's history.
         $table_name = $wpdb->prefix . 'convertpro_interactions';
         $sql = "CREATE TABLE $table_name (
 			id int(11) NOT NULL AUTO_INCREMENT,
@@ -61,9 +68,12 @@ class Database
 			type enum('view','conversion') NOT NULL,
 			splittest_id int(11) NOT NULL,
 			variation_id int(11) NOT NULL,
+			run int(11) NOT NULL DEFAULT 1,
 			created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id)
+			PRIMARY KEY (id),
+			KEY splittest_run (splittest_id, run),
+			KEY client_test (client_id, splittest_id)
 		) $charset_collate;";
         dbDelta($sql);
     }

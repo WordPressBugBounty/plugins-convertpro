@@ -1,5 +1,9 @@
 <?php
 namespace Finestics;
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
+
 
 /**
  * Finestics Client
@@ -136,7 +140,11 @@ class Client
 
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
-            $plugin_data = get_plugin_data($this->file);
+            // Third argument off: translating the plugin header here would load
+            // our text domain on plugins_loaded, and WordPress 6.7 warns about
+            // that on every single request. Only Version is read, and versions
+            // are not translated.
+            $plugin_data = get_plugin_data($this->file, false, false);
 
             $this->project_version = $plugin_data['Version'];
             $this->type = 'plugin';

@@ -1,6 +1,10 @@
 <?php
 
 namespace ConvertPro;
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
+
 
 /**
  * Scripts and Styles Class
@@ -80,9 +84,18 @@ class Assets
                 'version'   => CONVERTPRO_VERSION,
                 'in_footer' => true
             ],
+            // Bundled rather than loaded from a CDN: WordPress.org requires
+            // plugins to ship their own assets, and a remote script would also
+            // break the report on sites without outside network access.
             'chart' => [
-                'src'       => 'https://cdn.jsdelivr.net/npm/chart.js',
-                'deps'      => ['jquery'],
+                'src'       => CONVERTPRO_ASSETS . '/vendor/chartjs/chart.umd.js',
+                'deps'      => [],
+                'version'   => '4.5.1',
+                'in_footer' => true
+            ],
+            'convertpro-click-goal' => [
+                'src'       => CONVERTPRO_ASSETS . '/js/click-goal.js',
+                'deps'      => [],
                 'version'   => CONVERTPRO_VERSION,
                 'in_footer' => true
             ],

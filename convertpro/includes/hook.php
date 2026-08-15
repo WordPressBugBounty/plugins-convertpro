@@ -1,8 +1,14 @@
 <?php
+
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
 add_action('convertpro-variation-btn', 'convertpro_vari_btn');
 
 function convertpro_vari_btn()
-{ ?>
+{
+    $convertpro_variation_limit = convertpro_free_limit('variations');
+    ?>
     <div class="variation-btn">
         <a class="vari-btn" href="#">
             <span>
@@ -10,12 +16,38 @@ function convertpro_vari_btn()
                     <path d="M9 4.5V9M9 9V13.5M9 9H13.5M9 9L4.5 9" stroke="#F9FAFB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
             </span>
-            <?php echo esc_html__('Add More Variation', 'convertpro'); ?>
+            <?php echo esc_html__('Add another version', 'convertpro'); ?>
         </a>
     </div>
     <script>
         jQuery(document).ready(function($) {
-            var maxVariations = 2;
+            // 0 means no limit. Sites that were using EasyTest before the limits
+            // existed get 0 and never see the button disappear.
+            var maxVariations = <?php echo (int) $convertpro_variation_limit; ?>;
+
+            // A test that already has more versions than the limit keeps them, so
+            // the starting count is the floor rather than the limit.
+            var allowedVariations = Math.max(maxVariations, jQuery('.convertpro-data-variation').length);
+
+            function refreshControls() {
+                var rows = jQuery('.convertpro-data-variation').length;
+
+                // Two is the minimum a test can compare, so at two there is
+                // nothing to remove. Hiding the control beats letting someone
+                // click it and watch nothing happen, and the class collapses the
+                // column so the row does not end in an empty box.
+                jQuery('.button-delete').toggle(rows > 2);
+                jQuery('.convertpro-test-variations').toggleClass('has-delete', rows > 2);
+
+                if (!maxVariations) {
+                    return;
+                }
+
+                var atLimit = rows >= allowedVariations;
+
+                jQuery('.variation-btn').toggle(!atLimit);
+                jQuery('.convertpro-variation-cap').toggle(atLimit);
+            }
 
             function generateUniqueClassName(prefix) {
                 return prefix + Math.random().toString(36).substr(2, 9);
@@ -25,7 +57,11 @@ function convertpro_vari_btn()
                 var variationsContainer = jQuery('#variations-container');
                 var currentVariationsCount = jQuery('.convertpro-data-variation').length;
 
-                // if (currentVariationsCount < maxVariations) {
+                if (maxVariations && currentVariationsCount >= allowedVariations) {
+                    refreshControls();
+                    return;
+                }
+
                     var newIndex = currentVariationsCount;
                     var uniqueClassName = generateUniqueClassName('celm-');
 
@@ -33,7 +69,7 @@ function convertpro_vari_btn()
                         <div class="convertpro-data-variation" data-variation-id="">
                             <input type="hidden" name="test-variation[${newIndex}][id]" value="">
                             <div class="name">
-                                <input class="variation-name" name="test-variation[${newIndex}][name]" type="text" value="" placeholder="name" required />
+                                <input class="variation-name" name="test-variation[${newIndex}][name]" type="text" value="" placeholder="Name" required />
                             </div>
                             <div class="post">
                                 <select name="test-variation[${newIndex}][page-id]">
@@ -41,7 +77,7 @@ function convertpro_vari_btn()
                                     <?php
                                     $pages = get_pages();
                                     foreach ($pages as $page) { ?>
-                                        <option value="<?php echo esc_attr($page->ID); ?>"><?php echo esc_html($page->post_title); ?></option>
+                                        <option value="<?php echo esc_attr($page->ID); ?>"><?php echo esc_html(convertpro_page_option_label($page, $pages)); ?></option>
                                     <?php } ?>
                                 </select>
                             </div>
@@ -60,12 +96,7 @@ function convertpro_vari_btn()
                     `;
 
                     variationsContainer.append(newVariation);
-
-         /*        } else {
-                    // Show alert to buy Pro when max variations reached
-                    alert('Please upgrade to Pro to add more variations.');
-                    // window.location.href = 'https://example.com';
-                } */
+                    refreshControls();
             }
 
             // Handle click on Add Variation button
@@ -76,13 +107,13 @@ function convertpro_vari_btn()
 
             // Handle click on Delete button for variations
             jQuery(document).on('click', '.button-delete', function() {
-                if(jQuery('.button-delete').length > 2){
-                    var variationContainer = jQuery(this).closest('.convertpro-data-variation');
-                    variationContainer.remove();
-                }else{
-                    alert("You must have 2 variations");
+                if (jQuery('.convertpro-data-variation').length > 2) {
+                    jQuery(this).closest('.convertpro-data-variation').remove();
+                    refreshControls();
                 }
             });
+
+            refreshControls();
         });
 
         function copyToClipboard(inputElement) {

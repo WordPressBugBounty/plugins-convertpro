@@ -1,5 +1,9 @@
 <?php
 namespace Finestics;
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
+
 
 // phpcs:ignoreFile
 
@@ -151,6 +155,10 @@ class Insights
      */
     protected function init_common()
     {
+        // Also here, not only on activation: sites that were already running when
+        // this was added never fire the activation hook again, and they are the
+        // ones the dashboard has the least history for.
+        $this->remember_installed_at();
 
         if ($this->show_notice) {
             // tracking notice
@@ -166,6 +174,33 @@ class Insights
         add_filter('cron_schedules', array($this, 'add_weekly_schedule'));
         add_action($this->client->slug . '_tracker_send_event', array($this, 'send_tracking_data'));
         // add_action( 'admin_init', array( $this, 'send_tracking_data' ) ); // test
+    }
+
+    /**
+     * Stamp when this site first ran the plugin.
+     *
+     * Without a start date the deactivation report has nothing to measure from,
+     * which is why `days_installed` reads 0 for every row on the dashboard.
+     *
+     * Written once and never touched again. When the host plugin already recorded
+     * its own install date, that is used in preference to "now", so sites that
+     * have been running for months are not all stamped today.
+     *
+     * Keyed by slug, not a shared `finestics_` name: this SDK ships inside each
+     * plugin, so on a site running two of them a shared option would have the
+     * second plugin reporting the first one's install date.
+     *
+     * @return void
+     */
+    protected function remember_installed_at()
+    {
+        if (get_option($this->client->slug . '_installed_at')) {
+            return;
+        }
+
+        $existing = (int) get_option($this->client->slug . '_installed', 0);
+
+        add_option($this->client->slug . '_installed_at', $existing ? $existing : time());
     }
 
     /**
@@ -241,6 +276,7 @@ class Insights
             'ip_address' => $this->get_user_ip_address(),
             'theme' => get_stylesheet(),
             'version' => $this->client->project_version,
+            'installed_at' => (int) get_option($this->client->slug . '_installed_at'),
         );
 
         // Add metadata
@@ -640,6 +676,8 @@ class Insights
      */
     public function activate_plugin()
     {
+        $this->remember_installed_at();
+
         $allowed = get_option($this->client->slug . '_allow_tracking', 'no');
 
         // if it wasn't allowed before, do nothing
@@ -780,6 +818,7 @@ class Insights
             'ip_address' => $this->get_user_ip_address(),
             'theme' => get_stylesheet(),
             'version' => $this->client->project_version,
+            'installed_at' => (int) get_option($this->client->slug . '_installed_at'),
         );
 
         // Add metadata
@@ -1002,6 +1041,7 @@ class Insights
                 'ip_address' => $this->get_user_ip_address(),
                 'theme' => get_stylesheet(),
                 'version' => $this->client->project_version,
+                'installed_at' => (int) get_option($this->client->slug . '_installed_at'),
             );
 
             $this->client->send_request($data, 'deactivate');

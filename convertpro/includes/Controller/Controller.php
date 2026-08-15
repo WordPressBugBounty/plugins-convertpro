@@ -1,6 +1,10 @@
 <?php
 
 namespace ConvertPro\Controller;
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
+
 
 use ConvertPro\Classes\Repo;
 
@@ -63,14 +67,22 @@ class Controller
      */
     public function edit()
     {
-        // write a code here
-        // phpcs:ignore
-        $id = $_GET['id'];
-        if (!filter_var($id, FILTER_VALIDATE_INT)) {
-            return "Wrong Test Id";
-        }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- reading which test to show, capability checked by the menu.
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
         $repo = new Repo();
-        $test = $repo->gettestvalue($id);
+        $test = $id > 0 ? $repo->gettestvalue($id) : null;
+
+        // Rather than an empty screen when the link is wrong or the test has since
+        // been deleted, say so and point back at the list.
+        if (!$test) {
+            printf(
+                '<div class="notice notice-error"><p>%s <a href="%s">%s</a></p></div>',
+                esc_html__('That test is no longer here.', 'convertpro'),
+                esc_url(admin_url('admin.php?page=convertpro-settings')),
+                esc_html__('Back to all tests', 'convertpro')
+            );
+            return;
+        }
 
         $pages = get_pages();
 

@@ -446,7 +446,7 @@ a.edit-button {
 
 }
 
-.convertpro-conversion-page-wrapper,
+.convertpro-goal-card,
 .convertpro-test-variations,
 .test-top-wrap{
     border: 1px solid #D2D2D2;
@@ -769,4 +769,230 @@ a.pageview-btn {
     font-weight: 500;
     line-height: 20px;
     text-align: center;
+}
+.convertpro-status-paused {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: #F1F2F4;
+    color: #7C838A;
+    font-size: 12px;
+    font-weight: 500;
+    vertical-align: middle;
+}
+
+a.convertpro-toggle-button {
+    background-color: #fff;
+    padding: 9px 11px;
+    border: 1px solid rgba(8, 14, 19, 0.1);
+    border-radius: 7px;
+    font-size: 12px;
+    line-height: 21px;
+    font-weight: 500;
+    font-family: 'Inter';
+    color: #080E13;
+    display: inline-block;
+    outline: none;
+    box-shadow: none;
+    margin-right: 5px;
+    text-decoration: none;
+}
+
+a.convertpro-toggle-button:hover {
+    border-color: rgba(8, 14, 19, 0.3);
+    color: #080E13;
+}
+
+.convertpro-variation-help {
+    margin: 12px 2px 0;
+    color: #7C838A;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.convertpro-field-error {
+    margin: 6px 2px 0;
+    color: #C42B2B;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.convertpro-row-errors {
+    margin-top: 10px;
+}
+
+.convertpro-row-errors .convertpro-field-error {
+    margin: 4px 2px;
+}
+
+input.convertpro-invalid,
+select.convertpro-invalid {
+    border-color: #C42B2B !important;
+}
+
+.convertpro-share-total {
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: #EDF7ED;
+    color: #1E8E1B;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.convertpro-share-total.is-off {
+    background: #FDECEC;
+    color: #C42B2B;
+}
+
+.test-button-save.is-blocked {
+    opacity: 0.55;
+}
+
+.convertpro-preview-note {
+    margin: 10px 2px 0;
+    color: #7C838A;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.convertpro-preview-note a {
+    color: #3767FB;
+}
+
+
+.convertpro-goal-card .convertpro-goal-field {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid #E8E8E8;
+}
+
+.convertpro-goal-card .convertpro-goal-field label {
+    display: block;
+    font-family: 'Inter';
+    font-size: 14px;
+    font-weight: 600;
+    color: #080E13;
+}
+
+.convertpro-goal-card .convertpro-goal-hint {
+    margin: 4px 0 10px;
+    color: #7C838A;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.convertpro-goal-card #test-conversion-selector {
+    width: 100%;
+}
+
+.convertpro-goal-card > select#test-conversion-type {
+    width: 100%;
+    max-width: 100%;
+}
+
+.convertpro-test-cap,
+.convertpro-variation-cap {
+    margin: 12px 0 0;
+    color: #5a6572;
+    font-size: 13px;
+}
+
+/*
+ * Version rows and their column headings.
+ *
+ * Both were laid out separately — the headings spread with space-around while
+ * the fields used fixed percentages that came to 90%, so the labels never sat
+ * over their own field and the last 10% of every row was dead space. They now
+ * share one set of proportions, and the columns grow to fill whatever is left
+ * when a column is hidden (Page for element tests, CSS class for page tests).
+ */
+.convertpro-test-variations .headline,
+.convertpro-data-variation {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+    padding-right: 4px;
+}
+
+.convertpro-test-variations .headline > div,
+.convertpro-data-variation > div {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+}
+
+.convertpro-test-variations .headline .name,
+.convertpro-data-variation .name {
+    flex-grow: 3;
+}
+
+.convertpro-test-variations .headline .post,
+.convertpro-data-variation .post {
+    flex-grow: 4;
+}
+
+/* A share is at most three characters; it does not need a third of the row. */
+.convertpro-test-variations .headline .percentage,
+.convertpro-data-variation .percentage {
+    flex-grow: 2;
+}
+
+/* The generated class is the longest thing in the row, so it gets the room. */
+.convertpro-test-variations .headline .convertpro-class-gen,
+.convertpro-data-variation .convertpro-class-gen {
+    flex-grow: 5;
+}
+
+/*
+ * Collapsed until there is something to delete. A two-version test cannot lose
+ * one, so the control is hidden — and an empty 28px column at the end of every
+ * row reads as a broken field. The class is toggled in convertpro_vari_btn().
+ */
+.convertpro-test-variations .headline .actions,
+.convertpro-data-variation .actions {
+    flex: 0 0 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.convertpro-test-variations.has-delete .headline .actions,
+.convertpro-test-variations.has-delete .convertpro-data-variation .actions {
+    flex: 0 0 28px;
+}
+
+.convertpro-data-variation .name input,
+.convertpro-data-variation .percentage input,
+.convertpro-data-variation .convertpro-class-gen input,
+.convertpro-data-variation .post select {
+    width: 100%;
+    min-width: 0;
+}
+
+.convertpro-test-variations .headline > div {
+    padding: 0 10px;
+}
+
+/*
+ * One gap between the form's cards, owned by the form rather than by whichever
+ * card happens to be in the middle. The spacing used to come from the versions
+ * block's own margin, so on a new test — where that block stays hidden until a
+ * type is chosen — the first and last cards sat flush against each other.
+ *
+ * Flex gap skips hidden children, so nothing doubles up when the block appears.
+ */
+#convertpro-test-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+#convertpro-test-form > .convertpro-test-variations,
+#convertpro-test-form > .submit-btn {
+    margin-top: 0;
+    margin-bottom: 0;
 }

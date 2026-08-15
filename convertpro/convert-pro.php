@@ -5,7 +5,7 @@ use Finestics\Client;
  * Plugin Name: EasyTest - Simplify A/B Testing (Former ConvertPro)
  * Plugin URI: https://wpgrids.com/
  * Description: EasyTest allows you to ab testing.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: wpgrids
  * Author URI: https://profiles.wordpress.org/wpgrids/
  * Text Domain: convertpro
@@ -40,7 +40,7 @@ final class ConvertPro
      *
      * @var string
      */
-    public $version = '1.0.2';
+    public $version = '1.0.3';
 
     /**
      * Holds various class instances
@@ -152,21 +152,12 @@ final class ConvertPro
      */
     public function init_plugin()
     {
+        $this->maybe_upgrade();
+
         new Assets();
         $init = new Init();
         $init->init();
-        global $wpdb;
-        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-        $results = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}convertpro");
-
-        foreach ($results as $result) {
-            if ($result->test_type == 'elements') {
-                new ElementRedirection();
-            } else {
-                new Redirection();
-            }
-        }
+        $this->boot_visitor_handlers();
 
         $this->includes();
         $this->init_hooks();
@@ -176,7 +167,13 @@ final class ConvertPro
         }
 
         $init_finestics = new Finestics\Client('convertpro', 'ConvertPro', __FILE__);
-        $init_finestics->insights()->init();
+
+        // Rides the existing opt-in: nothing is sent unless the site owner turned
+        // usage reporting on. Counts and timestamps only — see
+        // convertpro_free_tier_usage().
+        $init_finestics->insights()
+            ->add_extra('convertpro_free_tier_usage')
+            ->init();
 
 
     }
@@ -190,12 +187,243 @@ final class ConvertPro
     {
 
         $installed = get_option('convertpro_installed');
+
+        // Read before either option is written below, so a first-ever activation
+        // is told apart from someone switching an old install back on.
+        $this->remember_free_limits(get_option('convertpro_version'), $installed);
+
         new Database();
         if (!$installed) {
             update_option('convertpro_installed', time());
         }
 
         update_option('convertpro_version', CONVERTPRO_VERSION);
+    }
+
+    /**
+     * Decide once, per site, whether the free limits apply here.
+     *
+     * Sites that were already using EasyTest keep everything they built — the
+     * limits are for people installing it from now on. Taking working tests away
+     * from someone who already has them is both a bad thing to do and, on
+     * WordPress.org, not allowed.
+     *
+     * The answer is written once and never revisited, so nothing changes under a
+     * site later.
+     *
+     * @param string|false $stored_version Version option as it was before this release.
+     * @param int|false    $installed_at   Install timestamp as it was before this release.
+     * @return void
+     */
+    public function remember_free_limits($stored_version, $installed_at)
+    {
+        // Nothing to be exempt from until the limits are actually in force, and
+        // stamping early would do real harm: a site that installs during the hold
+        // would be marked "new", build five tests under no limit, and then be
+        // capped the day the limits switch on. Deciding at the moment they become
+        // real means everything already out there is exempt, which is the promise.
+        if (!array_filter(convertpro_free_limit_defaults())) {
+            return;
+        }
+
+        if (false !== get_option('convertpro_free_limits', false)) {
+            return;
+        }
+
+        // Every released version wrote both of these on activation, so either one
+        // proves the site had EasyTest before.
+        $already_here = (bool) $stored_version || (bool) $installed_at;
+
+        // And if neither survived — options wiped, a migration, a restore that
+        // brought the tables but not the options — tests in the table say the
+        // same thing. Getting this wrong would cap someone who already built
+        // more than the limit, so it is worth one query, once, ever.
+        if (!$already_here) {
+            $already_here = $this->has_existing_tests();
+        }
+
+        update_option('convertpro_free_limits', $already_here ? 'off' : 'on');
+    }
+
+    /**
+     * Does this site already have tests, from before the limits existed?
+     *
+     * @return bool
+     */
+    private function has_existing_tests()
+    {
+        global $wpdb;
+
+        $table = $wpdb->prefix . 'convertpro';
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+            return false;
+        }
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        return (bool) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+    }
+
+    /**
+     * Hook up the visitor-facing handlers, once each.
+     *
+     * These used to be created once per row in the tests table, so a site with
+     * five tests registered five copies of the same hooks — five passes over the
+     * test list on every request, and for element tests five nested output
+     * buffers each re-parsing the whole page.
+     *
+     * @return void
+     */
+    public function boot_visitor_handlers()
+    {
+        if (is_admin()) {
+            return;
+        }
+
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $types = $wpdb->get_col("SELECT DISTINCT test_type FROM {$wpdb->prefix}convertpro WHERE active = 1");
+
+        if (in_array('elements', $types, true)) {
+            new ElementRedirection();
+        }
+
+        if (array_diff($types, array('elements'))) {
+            new Redirection();
+        }
+    }
+
+    /**
+     * Run install/upgrade routines when the stored version is behind the code.
+     *
+     * WordPress does not fire the activation hook when a plugin is updated, so
+     * schema changes have to be applied from a version check on load.
+     *
+     * @return void
+     */
+    public function maybe_upgrade()
+    {
+        $stored = get_option('convertpro_version');
+
+        // Before the early return: WordPress does not fire the activation hook on
+        // an update, so for every site that upgrades into this release, this is
+        // the only place we get to notice they were here first.
+        $this->remember_free_limits($stored, get_option('convertpro_installed'));
+
+        if ($stored === CONVERTPRO_VERSION) {
+            return;
+        }
+
+        new Database();
+
+        // Remember the last interaction recorded by the old, biased engine so the
+        // report can warn about runs that still mix it with corrected data. Row
+        // ids are used rather than a timestamp because the interaction times come
+        // from MySQL's clock, which need not agree with the site's timezone.
+        if ($stored && false === get_option('convertpro_engine_fix_max_id', false)) {
+            global $wpdb;
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+            $max_id = (int) $wpdb->get_var("SELECT MAX(id) FROM {$wpdb->prefix}convertpro_interactions");
+            update_option('convertpro_engine_fix_max_id', $max_id);
+        }
+
+        update_option('convertpro_looping_tests', $this->find_looping_tests());
+
+        update_option('convertpro_version', CONVERTPRO_VERSION);
+    }
+
+    /**
+     * Tests whose URL is a page that already exists.
+     *
+     * Saving one of these has been refused since 1.0.3, but rows saved before
+     * that are still in the table and still send visitors round in a circle. The
+     * redirect itself is skipped at runtime; this is what tells the owner which
+     * test to go and fix.
+     *
+     * @return array
+     */
+    public function find_looping_tests()
+    {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $tests = $wpdb->get_results("SELECT id, name, test_uri FROM {$wpdb->prefix}convertpro WHERE test_type = 'pages' AND active = 1");
+
+        $broken = array();
+
+        foreach ((array) $tests as $test) {
+            $uri = trim((string) $test->test_uri, '/ ');
+
+            if ('' === $uri || get_page_by_path($uri, OBJECT, array('page', 'post'))) {
+                $broken[] = array(
+                    'id'   => (int) $test->id,
+                    'name' => (string) $test->name,
+                    'uri'  => $uri,
+                );
+            }
+        }
+
+        return $broken;
+    }
+
+    /**
+     * Warn about tests that were sending visitors back to where they started.
+     *
+     * @return void
+     */
+    public function looping_tests_notice()
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $stored = get_option('convertpro_looping_tests', array());
+
+        if (empty($stored) || !is_array($stored)) {
+            return;
+        }
+
+        // Re-check before saying anything, so the notice clears itself as soon as
+        // the tests are fixed rather than waiting for the next update.
+        $broken = $this->find_looping_tests();
+
+        if (empty($broken)) {
+            delete_option('convertpro_looping_tests');
+            return;
+        }
+
+        update_option('convertpro_looping_tests', $broken);
+
+        $links = array();
+
+        foreach ($broken as $test) {
+            $label = '' === $test['uri']
+                ? sprintf(
+                    /* translators: %s: test name. */
+                    __('%s — no URL, so it was catching your home page', 'convertpro'),
+                    $test['name']
+                )
+                : sprintf(
+                    /* translators: 1: test name, 2: the test URL. */
+                    __('%1$s — /%2$s/ is already a page', 'convertpro'),
+                    $test['name'],
+                    $test['uri']
+                );
+
+            $links[] = '<a href="' . esc_url(admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . $test['id'])) . '">' . esc_html($label) . '</a>';
+        }
+
+        echo '<div class="notice notice-warning"><p><strong>' . esc_html__('EasyTest has stopped some of your tests', 'convertpro') . '</strong></p>';
+        echo '<p>' . wp_kses_post(
+            sprintf(
+                /* translators: %s: list of links to the affected tests. */
+                __('A test URL has to be an address of its own, with no page behind it. These point at pages people already visit, so visitors were being sent somewhere they never asked for. They stay off until each one has its own URL: %s', 'convertpro'),
+                implode(', ', $links)
+            )
+        ) . '</p>';
+        echo '<p>' . esc_html__('Pick something no page uses — summer-offer, say — and the test starts again.', 'convertpro') . '</p></div>';
     }
 
     /**
@@ -238,6 +466,10 @@ final class ConvertPro
 
         // Localize our plugin
         add_action('init', array($this, 'localization_setup'));
+
+        if ($this->is_request('admin')) {
+            add_action('admin_notices', array($this, 'looping_tests_notice'));
+        }
         do_action('convertpro_init');
     }
 

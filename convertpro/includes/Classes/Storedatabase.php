@@ -1,6 +1,10 @@
 <?php
 
 namespace ConvertPro\Classes;
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
+
 
 class Storedatabase
 {
@@ -23,8 +27,9 @@ class Storedatabase
                     'active' => true,
                     'test_type' => isset($_POST['convertpro-test-type']) ? sanitize_text_field(wp_unslash($_POST['convertpro-test-type'])) : 'pages',
                     'test_uri' => isset($_POST['test-uri']) ?  sanitize_text_field(wp_unslash($_POST['test-uri'])) : '',
-                    'conversion_page_id' => isset($_POST['test-conversion-page']) ? sanitize_text_field(wp_unslash($_POST['test-conversion-page'])) : 0,
-                    // 'conversion_url' => $_POST['test-conversion-url'] == "null" ? "null" : sanitize_text_field(wp_unslash($_POST['test-conversion-url']));
+                    'conversion_type' => $this->conversion_type(),
+                    'conversion_page_id' => $this->conversion_page_id(),
+                    'conversion_url' => $this->conversion_selector(),
                 ],
                 array('%s')
             );
@@ -69,11 +74,12 @@ class Storedatabase
                     'name' => isset($_POST['test-name']) ? sanitize_text_field(wp_unslash($_POST['test-name'])) : '',
                     'test_type' => isset($_POST['convertpro-test-type']) ?  sanitize_text_field(wp_unslash($_POST['convertpro-test-type'])) : 'pages',
                     'test_uri' => isset($_POST['test-uri']) ? sanitize_text_field(wp_unslash($_POST['test-uri'])) : '',
-                    'conversion_page_id' => isset($_POST['test-conversion-page']) ? sanitize_text_field(wp_unslash($_POST['test-conversion-page'])) : 0,
-                    // 'conversion_url' => $this->removewhitespace($_POST['test-conversion-url']),
+                    'conversion_type' => $this->conversion_type(),
+                    'conversion_page_id' => $this->conversion_page_id(),
+                    'conversion_url' => $this->conversion_selector(),
                 ],
                 ['id' => $id],
-                ['%s', '%s', '%s'],
+                ['%s', '%s', '%s', '%s', '%d', '%s'],
                 ['%d']
             );
             //phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -98,6 +104,53 @@ class Storedatabase
             ['%d']
         );
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    }
+
+    /**
+     * How this test decides someone converted: reaching a page, or clicking
+     * something on the page they landed on.
+     *
+     * @return string 'page' or 'click'
+     */
+    private function conversion_type()
+    {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- callers verify the nonce.
+        $type = isset($_POST['test-conversion-type']) ? sanitize_text_field(wp_unslash($_POST['test-conversion-type'])) : 'page';
+
+        return 'click' === $type ? 'click' : 'page';
+    }
+
+    /**
+     * Conversion page, only meaningful for page goals.
+     *
+     * @return int
+     */
+    private function conversion_page_id()
+    {
+        if ('click' === $this->conversion_type()) {
+            return 0;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- callers verify the nonce.
+        return isset($_POST['test-conversion-page']) ? (int) $_POST['test-conversion-page'] : 0;
+    }
+
+    /**
+     * CSS selector counted as a conversion, only meaningful for click goals.
+     *
+     * @return string
+     */
+    private function conversion_selector()
+    {
+        if ('click' !== $this->conversion_type()) {
+            return '';
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- callers verify the nonce.
+        $selector = isset($_POST['test-conversion-selector']) ? wp_unslash($_POST['test-conversion-selector']) : '';
+
+        // A selector is markup-adjacent, so strip tags and keep it to one line.
+        return trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) $selector)));
     }
 
     private function getTestTable()

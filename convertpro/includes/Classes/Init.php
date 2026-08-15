@@ -1,6 +1,10 @@
 <?php
 
 namespace ConvertPro\Classes;
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
+
 
 class Init
 {
@@ -28,7 +32,16 @@ class Init
 
             $controller = new Store();
             // phpcs:ignore
-            if ($_GET['action'] == "store") {
+            if (!isset($_GET['action'])) {
+                return;
+                // phpcs:ignore
+            } else if ($_GET['action'] == "reset") {
+                $controller->RepoReset();
+                // phpcs:ignore
+            } else if ($_GET['action'] == "toggle") {
+                $controller->RepoToggleActive();
+                // phpcs:ignore
+            } else if ($_GET['action'] == "store") {
                 $controller->RepoStore();
                 // phpcs:ignore
             } else if ($_GET['action'] == "delete") {

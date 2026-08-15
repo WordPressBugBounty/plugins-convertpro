@@ -1,65 +1,69 @@
 <?php
+
+if (!defined('ABSPATH')) {
+    exit; // Called directly, nothing to do here.
+}
 // Add a function to handle the AJAX request
 
-$test_id = isset($_GET['id']) ? sanitize_text_field( wp_unslash( $_GET['id'] ) ) : false;
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- reading which test to show, capability checked by the menu.
+$test_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+$test = $test_id > 0 ? (new \ConvertPro\Classes\Repo())->gettestvalue($test_id) : null;
+
+// An empty report with a live Reset button is worse than saying the test is not
+// there, so stop before any of it is drawn.
+if (!$test) {
+    printf(
+        '<div class="notice notice-error"><p>%s <a href="%s">%s</a></p></div>',
+        esc_html__('That test is no longer here.', 'convertpro'),
+        esc_url(admin_url('admin.php?page=convertpro-settings')),
+        esc_html__('Back to all tests', 'convertpro')
+    );
+    return;
+}
+
 // Step 1: Retrieve Data from the Database
 global $wpdb;
 $table_name = $wpdb->prefix . 'convertpro_interactions';
 
-
 $results = convertpro_interactions_chart_query($test_id);
-$labels = array();
-$datasets = array();
-// var_dump($results);
-if ($results):
-    // Prepare the data for Chart.js
-    $labels = array_unique(array_merge(array_column($results, 'interaction_date'))); // or 'day_name'
-    sort($labels);
+$chart = convertpro_build_chart_datasets($results);
+$labels = $chart['labels'];
+$datasets = $chart['datasets'];
 
-    $datasets = array();
-    $bg_color_set = [
-        1 => '#3BCB38',
-        2 => '#3767FB',
-        3 => '#3767FB',
-        4 => '#EE2626'
-    ];
-    $i = 0;
-    foreach ($results as $row) {
-        $i++;
-        $variation_name = $row['variation_name'];
-        $date = $row['interaction_date']; // or $row['day_name']
-        $views = $row['daily_total_interactions'];
-        $conversions = $row['daily_conversions'];
+$test_name = $test->name;
+$variation_total = ($test && !empty($test->variations)) ? count($test->variations) : 0;
 
-        // Create a dataset for views
-        $dataset_name = $variation_name;
-        if (!isset($datasets[$dataset_name])) {
-            $datasets[$dataset_name] = array(
-                'label' => $dataset_name,
-                'data' => array_fill_keys($labels, 0),
-                'backgroundColor' => [
-                    $bg_color_set[$i]
-                ],
-            );
-        }
-        $datasets[$dataset_name]['data'][$date] = $views;
+if ($test && $test->test_type === 'elements') {
+    /* translators: %d: number of variations. */
+    $test_summary = sprintf(_n('Showing visitors %d version of an element', 'Showing visitors one of %d versions of an element', $variation_total, 'convertpro'), $variation_total);
+} else {
+    /* translators: %d: number of variations. */
+    $test_summary = sprintf(_n('Sending visitors to %d version of a page', 'Splitting visitors between %d versions of a page', $variation_total, 'convertpro'), $variation_total);
+}
 
-        // // Create a dataset for conversions
-        // $dataset_name = $variation_name . ' Conversions';
-        // if (!isset($datasets[$dataset_name])) {
-        //     $datasets[$dataset_name] = array(
-        //         'label' => $dataset_name,
-        //         'data' => array_fill_keys($labels, 0),
-        //     );
-        // }
-        // $datasets[$dataset_name]['data'][$date] = $conversions;
-    }
+$current_run = convertpro_get_test_run($test_id);
+$reset_url = wp_nonce_url(
+    admin_url('admin.php?page=convertpro-settings&scope=test&action=reset&id=' . $test_id),
+    'convertpro-reset-test_' . $test_id
+);
 
-    $datasets = array_values($datasets);
+// Data collected before the assignment fix shipped is mixed in with data from
+// the corrected engine, so tell the user rather than letting them read it as one
+// clean result.
+$fix_max_id = get_option('convertpro_engine_fix_max_id', false);
+$prefix_count = 0;
+if (false !== $fix_max_id && $fix_max_id > 0 && $test_id) {
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $prefix_count = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$table_name} WHERE splittest_id = %d AND run = %d AND id <= %d",
+            $test_id,
+            $current_run,
+            (int) $fix_max_id
+        )
+    );
+}
 
-
-endif;
-// print_r($datasets);
 wp_enqueue_script('chart');
 ?>
 
@@ -108,7 +112,22 @@ wp_enqueue_script('chart');
     .convertpro-full-report .report-title {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        gap: 12px;
+    }
+
+    /* Heading on the left, controls grouped together on the right. */
+    .convertpro-full-report .report-title .convertpro-report-heading {
+        margin-right: auto;
+    }
+
+    .convertpro-full-report .report-title h1 {
+        margin-bottom: 0;
+    }
+
+    .convertpro-report-subtitle {
+        margin: 2px 0 0;
+        color: #7C838A;
+        font-size: 13px;
     }
 
 
@@ -123,13 +142,102 @@ wp_enqueue_script('chart');
         max-width: 100%;
         color: #080E13;
     }
+
+    .convertpro-run-badge {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 10px;
+        border-radius: 12px;
+        background: #eef1f6;
+        color: #50575e;
+        font-size: 13px;
+        vertical-align: middle;
+    }
+
+    .convertpro-chart-empty {
+        text-align: center;
+        color: #646970;
+        margin: 24px 0;
+    }
+
+    /* Notes sit under full-width cards, so let them run the same width rather
+       than stopping short and leaving a gap down the right-hand side. */
+    .convertpro-full-report .description {
+        margin: 10px 0 0;
+        color: #646970;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .convertpro-performance-report .description {
+        margin-bottom: 16px;
+    }
+
+    .convertpro-fullreport .convertpro-vs-control {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .convertpro-fullreport .convertpro-vs-control.is-up {
+        color: #1E8E1B;
+    }
+
+    .convertpro-fullreport .convertpro-vs-control.is-down {
+        color: #C42B2B;
+    }
+
+    .convertpro-message {
+        border: 1px solid #E8E8E8;
+        border-left: 4px solid #7C838A;
+        border-radius: 10px;
+        background: #fff;
+        padding: 4px 20px;
+        margin: 0 0 24px;
+    }
+
+    .convertpro-message p {
+        margin: 12px 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #4B535A;
+    }
+
+    .convertpro-message-warning {
+        border-left-color: #E0A100;
+        background: #FFFBF0;
+    }
+
+    .convertpro-message-success {
+        border-left-color: #3BCB38;
+        background: #F4FCF4;
+    }
 </style>
 <div class="convertpro-report-page">
     <div class="container">
 
         <div class="convertpro-full-report">
             <div class="report-title">
-                <h1><?php esc_html_e('Full Report', 'convertpro'); ?></h1>
+                <div class="convertpro-report-heading">
+                    <h1>
+                        <?php echo $test_name ? esc_html($test_name) : esc_html__('Your test results', 'convertpro'); ?>
+                        <?php if ($current_run > 1) : ?>
+                            <span class="convertpro-run-badge">
+                                <?php
+                                /* translators: %d: run number. */
+                                printf(esc_html__('Run %d', 'convertpro'), (int) $current_run);
+                                ?>
+                            </span>
+                        <?php endif; ?>
+                    </h1>
+                    <?php if ($test_name && $variation_total) : ?>
+                        <p class="convertpro-report-subtitle"><?php echo esc_html($test_summary); ?></p>
+                    <?php endif; ?>
+                </div>
+
+                <a class="button convertpro-reset-test" href="<?php echo esc_url($reset_url); ?>"
+                    onclick="return confirm('<?php echo esc_js(__('Start this test over? Everyone gets sorted into a variation again from scratch. What you have collected so far is kept, but it drops out of this report.', 'convertpro')); ?>');">
+                    <?php esc_html_e('Reset test', 'convertpro'); ?>
+                </a>
 
                 <select name="report-range" id="convertpro-report-range">
                     <option value="7"><?php echo esc_html('Last 7 Days'); ?></option>
@@ -139,18 +247,54 @@ wp_enqueue_script('chart');
 
                 </select>
             </div>
+            <?php if (isset($_GET['message']) && $_GET['message'] === 'reset_success') : ?>
+                <div class="convertpro-message convertpro-message-success">
+                    <p>
+                        <?php
+                        /* translators: %d: run number. */
+                        printf(esc_html__('Done. This is now run %d. Visitors will be sorted into versions again, and the previous run is still saved.', 'convertpro'), (int) $current_run);
+                        ?>
+                    </p>
+                </div>
+            <?php elseif ($prefix_count > 0) : ?>
+                <div class="convertpro-message convertpro-message-warning">
+                    <p>
+                        <?php
+                        printf(
+                            /* translators: 1: number of visitors, already formatted. 2: opening link tag. 3: closing link tag. */
+                            esc_html(
+                                _n(
+                                    'Heads up: %1$s of the visitors counted below was sorted by the old method, which did not split traffic evenly. That makes this comparison unreliable. %2$sStart a fresh run%3$s to collect clean numbers. Nothing you have already recorded gets deleted.',
+                                    'Heads up: %1$s of the visitors counted below were sorted by the old method, which did not split traffic evenly. That makes this comparison unreliable. %2$sStart a fresh run%3$s to collect clean numbers. Nothing you have already recorded gets deleted.',
+                                    $prefix_count,
+                                    'convertpro'
+                                )
+                            ),
+                            esc_html(number_format_i18n($prefix_count)),
+                            '<a href="' . esc_url($reset_url) . '">',
+                            '</a>'
+                        );
+                        ?>
+                    </p>
+                </div>
+            <?php endif; ?>
+
             <div class="convertpro-performance-report">
-                <h4><?php echo esc_html('Performance Report') ?></h4>
+                <h4><?php esc_html_e('Day by day', 'convertpro'); ?></h4>
+                <p class="description"><?php esc_html_e('Views and conversions for each version, counted on the day the visitor first landed in the test.', 'convertpro'); ?></p>
                 <div class="convertpro-interactionChart-wrap">
                     <canvas id="convertpro-interactionChart"></canvas>
                 </div>
+                <p class="convertpro-chart-empty" <?php echo empty($labels) ? '' : 'style="display:none"'; ?>>
+                    <?php esc_html_e('Nothing to show yet. Results will appear here as soon as visitors start landing in the test.', 'convertpro'); ?>
+                </p>
             </div>
 
             <div class="variation-details-stats"></div>
 
             <div class="convertpro-data-table">
 
-                <h4><?php echo esc_html__('Report by Variation', 'convertpro') ?></h4>
+                <h4><?php esc_html_e('How each version did', 'convertpro'); ?></h4>
                 <div class="convertpro-fullreport-wrap">
                     <?php convertpro_interactions_report_html() ?>
                 </div>
@@ -171,23 +315,23 @@ wp_enqueue_script('chart');
                 datasets: <?php echo wp_json_encode($datasets); ?>
             },
             options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                },
                 plugins: {
                     legend: {
-                        display: true,
-                        labels: {
-                            color: 'rgb(255, 99, 132)'
-                        }
+                        display: true
                     }
                 }
 
             }
         });
 
-        <?php if (empty($labels)): ?>
-            myChart.data = {};
-            myChart.update();
-
-        <?php endif; ?>
         // Event handler for when the date range select box changes
         $('#convertpro-report-range').on('change', function() {
             // Get the selected range value
@@ -239,16 +383,12 @@ wp_enqueue_script('chart');
 
         // Function to update the chart with new data
         function updateChart(data) {
+            var hasData = data && data.labels && data.labels.length;
 
-            // Update the chart's labels and datasets
-            if (data.labels == 0 || data == 0) {
-                myChart.data = {};
+            myChart.data.labels = hasData ? data.labels : [];
+            myChart.data.datasets = hasData ? data.datasets : [];
 
-
-            } else {
-                myChart.data.labels = data.labels;
-                myChart.data.datasets = data.datasets;
-            }
+            $('.convertpro-chart-empty').toggle(!hasData);
 
             // Update the chart
             myChart.update();
