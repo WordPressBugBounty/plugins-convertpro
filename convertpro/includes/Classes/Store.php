@@ -134,6 +134,13 @@ class Store
                     return 'error_variation_class_missing';
                 }
 
+                // The engine uses this as a CSS selector. A class of `*` or
+                // `a, body` selects far more than the element it was meant for,
+                // and removing what it selects can empty the page.
+                if ('' === convertpro_safe_class_name($class)) {
+                    return 'error_variation_class_invalid';
+                }
+
                 if (in_array($class, $classes, true)) {
                     return 'error_variation_class_duplicate';
                 }
@@ -169,6 +176,61 @@ class Store
         );
 
         return array_map('intval', (array) $ids);
+    }
+
+    /**
+     * The split a test is saved with: version id => share.
+     *
+     * Compared against what was submitted to tell a real change to the split from
+     * a save that only renamed something.
+     *
+     * @param int $test_id
+     * @return array
+     */
+    private function saved_shares($test_id)
+    {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT id, percentage FROM {$wpdb->prefix}convertpro_variations WHERE splittest_id = %d",
+                (int) $test_id
+            )
+        );
+
+        $shares = array();
+
+        foreach ((array) $rows as $row) {
+            $shares[(int) $row->id] = (int) $row->percentage;
+        }
+
+        return $shares;
+    }
+
+    /**
+     * Start every version's quota again from its share.
+     *
+     * Used when the split has changed, so the traffic people get from here on is
+     * the split that is now on screen rather than a half-spent version of the old
+     * one.
+     *
+     * @param int $test_id
+     * @return void
+     */
+    private function restart_cycle($test_id)
+    {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$wpdb->prefix}convertpro_variations
+                SET remaining = percentage
+                WHERE splittest_id = %d",
+                (int) $test_id
+            )
+        );
     }
 
     /**
@@ -268,27 +330,38 @@ class Store
      */
     public function RepoStore()
     {
+        // Nothing is kept from an unverified request: a forged post that failed
+        // the nonce must not come back pre-filled on the next form this person
+        // opens. They get the form and a fresh nonce, not their attacker's text.
         if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'convertpro-nonce') || !current_user_can('manage_options')) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
-            exit;
+            $this->bail('security_error');
         }
 
         if (!isset($_POST['test-id'])) {
             // LOW@kberlau Log Error
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=error_update_data_missing'));
-            return;
+            $this->bail('error_update_data_missing');
         }
         $problem = $this->validate_test();
 
         if ($problem) {
+            convertpro_stash_form();
             $this->bail($problem);
         }
 
         // Proceed with data storage
         $db = new Storedatabase();
-        $id = $db->CreateTest();
+        $id = (int) $db->CreateTest();
+
+        // No id means the insert did not happen. Writing the versions anyway
+        // would file them against test 0, and the success message would point at
+        // a test that is not there.
+        if (!$id) {
+            convertpro_stash_form();
+            $this->bail('error_test_not_saved');
+        }
+
         if (isset($_POST['test-variation']) && is_array($_POST['test-variation'])) {
-            $test_variations = isset($_POST['test-variation']) && is_array($_POST['test-variation']) ? $_POST['test-variation'] : [];
+            $test_variations = wp_unslash($_POST['test-variation']);
             foreach ($test_variations as $variation) {
                 $variation['pageId'] = isset($variation['page-id']) ? (int)($variation['page-id']) : '';
                 $db->CreateTestVariation($id, $variation);
@@ -296,6 +369,7 @@ class Store
         }
         // Check if the data was stored successfully
         wp_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . $id . '&message=store_success'));
+        exit;
     }
 
     /**
@@ -312,6 +386,7 @@ class Store
         }
         if (!isset($_GET['id'])) {
             wp_redirect(admin_url('admin.php?page=convertpro-settings&message=error_delete'));
+            exit;
         }
 
         $id = sanitize_text_field(wp_unslash($_GET['id']));
@@ -320,6 +395,7 @@ class Store
         $db->TestDelete($id);
 
         wp_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=index&message=delete_success'));
+        exit;
     }
 
     /**
@@ -376,6 +452,62 @@ class Store
      *
      * @return void
      */
+    /**
+     * Record what someone did with the review ask, then send them on.
+     *
+     * "Happy" and "not happy" both end up at the same place: the report, with
+     * the review link and, for the unhappy, the support link. We are not
+     * deciding who is allowed to rate the plugin — see docs/review-prompt-plan.md.
+     *
+     * @return void
+     */
+    public function RepoReview()
+    {
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+        if (!isset($_GET['_wpnonce'])
+            || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'convertpro-review')
+            || !current_user_can('manage_options')) {
+            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
+            exit;
+        }
+
+        $answer = isset($_GET['answer']) ? sanitize_key(wp_unslash($_GET['answer'])) : '';
+
+        if (!in_array($answer, array('happy', 'unhappy', 'later', 'dismissed', 'clicked'), true)) {
+            $answer = 'dismissed';
+        }
+
+        $state = convertpro_review_state();
+        $changes = array();
+
+        if (!$state['asked_at']) {
+            $changes['asked_at'] = time();
+        }
+
+        if ('clicked' === $answer) {
+            // Going to WordPress.org. All we ever learn is that they went.
+            $changes['clicked_at'] = time();
+        } else {
+            $changes['answer'] = $answer;
+            $changes['answered_at'] = time();
+        }
+
+        convertpro_review_update($changes);
+
+        if ('clicked' === $answer) {
+            wp_redirect(convertpro_review_url());
+            exit;
+        }
+
+        $back = $id
+            ? admin_url('admin.php?page=convertpro-settings&scope=test&action=report&id=' . $id)
+            : admin_url('admin.php?page=convertpro-settings');
+
+        wp_redirect($back);
+        exit;
+    }
+
     public function RepoReset()
     {
         if (!isset($_GET['id'])) {
@@ -419,20 +551,21 @@ class Store
     public function Repoupdate()
     {
         // write a code here
+        $test_id = isset($_POST['test-id']) ? (int) $_POST['test-id'] : 0;
+
+        // As in RepoStore: an unverified post is answered with a form and a
+        // fresh nonce, never with the values it carried.
         if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'convertpro-nonce') || !current_user_can('manage_options')) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
-            return;
+            $this->bail('security_error', $test_id);
         }
         if (!isset($_POST['test-id'])) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=error_update_data_missing'));
-            return;
+            $this->bail('error_update_data_missing');
         }
-
-        $test_id = (int) $_POST['test-id'];
 
         $problem = $this->validate_test($test_id);
 
         if ($problem) {
+            convertpro_stash_form($test_id);
             $this->bail($problem, $test_id);
         }
 
@@ -449,8 +582,10 @@ class Store
             ? wp_unslash($_POST['test-variation'])
             : array();
 
-        $existing = $this->existing_variation_ids($test_id);
+        $before = $this->saved_shares($test_id);
+        $existing = array_keys($before);
         $kept = array();
+        $after = array();
 
         foreach ($submitted as $variation) {
             $variation['postId'] = isset($variation['page-id']) ? (int) $variation['page-id'] : 0;
@@ -460,6 +595,7 @@ class Store
             if ($variation_id && in_array($variation_id, $existing, true)) {
                 $db->updateTestVariation($variation_id, $variation);
                 $kept[] = $variation_id;
+                $after[$variation_id] = (int) $variation['percentage'];
                 continue;
             }
 
@@ -470,6 +606,17 @@ class Store
             $this->delete_variation($removed, $test_id);
         }
 
+        // Traffic is handed out from `remaining`, the share each version has left
+        // in the current cycle. If the split changed at all — a share edited, a
+        // version added, a version removed — the cycle in progress belongs to the
+        // old split, and leaving the untouched versions part-way through it means
+        // the traffic people actually get is neither the old split nor the new
+        // one. Restart the whole cycle, or leave it entirely alone.
+        if ($before !== $after) {
+            $this->restart_cycle($test_id);
+        }
+
         wp_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . $test_id . '&message=save_success'));
+        exit;
     }
 }

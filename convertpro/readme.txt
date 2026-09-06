@@ -3,12 +3,12 @@ Contributors: wpgrids, ashrafuddin765
 Tags: ab testing, split testing, ab test, conversion rate, landing page
 Requires at least: 5.0
 Requires PHP: 7.0
-Tested up to: 7.0
-Stable tag: 1.0.3
+Tested up to: 7.1
+Stable tag: 1.0.4
 License: GPL-2.0+
 License URI: http://www.gnu.org/licenses/gpl-2.0.txt
 
-A/B test your WordPress pages, headlines and buttons. Split your traffic, track conversions, and see which version actually wins.
+A/B test your pages, headlines and buttons. Runs on your own site: no account, no visitor limit, and your data never leaves.
 
 == Description ==
 
@@ -16,7 +16,11 @@ Not sure whether the new landing page beats the old one? Run an A/B test and fin
 
 EasyTest is a split testing plugin for WordPress. You make two versions of a page, or two versions of one thing on a page such as a headline or a button. EasyTest sends half your visitors to each, counts how many convert, and shows you both conversion rates side by side.
 
-It runs on your own site. No account to create, no monthly fee, and no limit on how many visitors you send through a test.
+It runs entirely on your own site:
+
+* **No account.** Install it and start. There is nothing to sign up for and nothing to connect.
+* **No visitor limit.** A hundred visitors or a hundred thousand, it is the same. No monthly cap, no meter running out mid-test.
+* **Your data stays put.** Every view and every conversion is a row in your own database. None of it leaves your site.
 
 = Features =
 
@@ -41,6 +45,9 @@ A cache that sits in front of WordPress, like Cloudflare or a host level cache, 
 5. Send your traffic to the test URL. EasyTest handles the rest.
 
 == Frequently Asked Questions ==
+
+= Is there a limit on how much traffic I can test? =
+No. A hundred visitors or a hundred thousand, it costs the same, because it all runs on your own site. There is no account and no monthly quota to run out of.
 
 = Do I need to know how to code? =
 No. Page tests need no code at all. For element tests you copy a CSS class and paste it into your page builder. That is the whole job.
@@ -70,7 +77,7 @@ They see the same version they saw the first time. EasyTest remembers for 30 day
 A cookie so they keep seeing the same version, and one row in your own database recording that visit and whether it converted. The id in that row is a random string, not a name, an email address or an IP address. None of it ever leaves your site.
 
 = Does EasyTest send my data anywhere? =
-Only if you switch on the optional usage report, and it is off until you do. If you turn it on, once a week EasyTest sends wpgrids.com your site address and name, the administrator email and name, your server IP, your WordPress, PHP, MySQL, server and theme versions, how many plugins and users you have, when you installed EasyTest, and how many tests you are running. We use it to decide what to build next, and you can switch it off again from the Plugins screen.
+Only if you switch on the optional usage report, and it is off until you do. If you turn it on, once a week EasyTest sends wpgrids.com your site address and name, the administrator email and name, your server IP, your WordPress, PHP, MySQL, server and theme versions, how many plugins and users you have, when you installed EasyTest, how many tests you are running, and whether you answered the review question and clicked through to WordPress.org. We use it to decide what to build next, and you can switch it off again from the Plugins screen.
 
 = Do I have to fill in the form when I deactivate? =
 No. Skipping it deactivates the plugin just the same.
@@ -83,27 +90,30 @@ No. Skipping it deactivates the plugin just the same.
 
 == Changelog ==
 
+= 1.0.4 =
+
+* Fixed: Blank page on bad class
+* Fixed: Wrong dates in the report
+* Fixed: Traffic split ignored your setting
+* Improved: Faster admin and front end
+* Security: Removed an unused handler
+* New: Asks once if EasyTest helped
+
 = 1.0.3 =
 
-If you ran a test on an earlier version, the numbers it gave you were probably wrong. This release fixes that.
-
-* Traffic is split at random in the ratio you set. Before, early visitors all got the same version, and splits like 25/75 came out wrong.
-* Conversions are recorded properly. They used to stop counting an hour after a visitor entered a test, element tests often recorded nothing, and a 404 could count as a conversion.
-* A test saved with no URL was taking over the home page. A test URL that matched a page you already had could send visitors round in a circle until the browser gave up. Both are refused now, and the test list names any old ones that need fixing.
-* utm tags, gclid and your own parameters carry over to the version the visitor lands on. They used to be dropped at the redirect.
-* Returning visitors go to the right page. They were sent to a guessed address that could 404.
-* Works with page caches. Only the URL that decides the split is kept out of the cache, so the pages you are testing stay cached.
-* New: click goals. Count a click on a link or button instead of a page visit, even when it goes to another site like an external checkout.
-* New: reset a test to start a fresh run. Earlier runs are kept.
-* Reports show views and conversions separately for each version, with the conversion rate against your control.
-* Adding or removing a version on a saved test now saves. Adding used to do nothing, and removing only cleared it from the screen.
-* Faster on sites running several tests, and the plugin loads on PHP 7.0 again.
-* Security: removed an unused route that could record a conversion for a logged-out visitor.
+* Fixed: Traffic split was uneven
+* Fixed: Conversions stopped counting early
+* Fixed: Broken and looping test URLs
+* Improved: Report shows every version
+* New: Click goals and test reset
+* Security: Removed an unused route
 
 = 1.0.2 =
 
-* Fixed a security issue reported by Patchstack (CVE-2025-63031): the reporting endpoints could be read without being logged in.
-* Tightened several other checks found while looking at it: a cross-site scripting hole on the report screen, the usage-tracking opt-out that turned tracking on instead of off, a missing check on the deactivation form, and an unprepared database query.
+* Security: Fixed CVE-2025-63031 (Patchstack)
+* Security: Report data readable without login
+* Security: Closed a cross-site scripting hole
+* Fixed: Tracking opt-out worked backwards
 
 = 1.0.1 =
 

@@ -58,7 +58,9 @@ class Redirection
                 $user_variation_id = isset($_COOKIE[$variationCookie]) ? sanitize_text_field(wp_unslash($_COOKIE[$variationCookie])) : '';
                 $client_id = isset($_COOKIE['convert_pro_uid']) ? sanitize_text_field(wp_unslash($_COOKIE['convert_pro_uid'])) : '';
 
-                if ($user_variation_id == $variation->id && !empty($active_class)) {
+                // Without a visitor id there is no row to flip, and the update
+                // would match on client_id = '' instead.
+                if ($user_variation_id == $variation->id && !empty($active_class) && '' !== $client_id) {
                     // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
                     // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
                     $wpdb->update(
@@ -277,14 +279,21 @@ class Redirection
             return false;
         }
 
+        // Take one off the quota in the database rather than writing back the
+        // number this request read. Two visitors arriving together both read the
+        // same figure, and both writing it back means one of the two assignments
+        // is never deducted — the split drifts on exactly the busy site where it
+        // matters. $remaining is left in the signature but no longer used.
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // $remaining = $variation->remaining - 1;
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-        $wpdb->update(
-            $wpdb->prefix . 'convertpro_variations',
-            array('remaining' => $remaining),
-            array('id' => $variation->id, 'splittest_id' => $testid)
-
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$wpdb->prefix}convertpro_variations
+                SET remaining = remaining - 1
+                WHERE id = %d AND splittest_id = %d AND remaining > 0",
+                $variation->id,
+                $testid
+            )
         );
         $cookie_value = $this->convertpro_generateuid();
         $expires = time() + CONVERTPRO_COOKIE_LIFETIME;
@@ -372,6 +381,12 @@ class Redirection
         if (sizeof($query) == 0) {
             $table_name = $wpdb->prefix . 'convertpro_interactions';
             // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+            // created_at is deliberately left to the column default so it comes
+            // from the same clock as updated_at and as NOW() in the report
+            // queries. Writing it from PHP would use the site's timezone, which
+            // need not agree with the database server's. Installs created before
+            // the schema carried that default are repaired on upgrade — see
+            // ConvertPro::maybe_upgrade().
             $wpdb->insert(
                 $table_name,
                 array(

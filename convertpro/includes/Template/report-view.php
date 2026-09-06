@@ -104,7 +104,7 @@ wp_enqueue_script('chart');
 
     .convertpro-performance-report h4 {
         font-size: 18px;
-        font-family: Inter;
+        font-family: var(--convertpro-font);
         font-weight: 600;
         margin-bottom: 15px;
     }
@@ -113,6 +113,7 @@ wp_enqueue_script('chart');
         display: flex;
         align-items: center;
         gap: 12px;
+        margin-bottom: 24px;
     }
 
     /* Heading on the left, controls grouped together on the right. */
@@ -207,6 +208,67 @@ wp_enqueue_script('chart');
         background: #FFFBF0;
     }
 
+    /* The review ask is a notice like any other, so it looks like one. */
+    .convertpro-message-review {
+        border-left-color: #3767FB;
+        background: #F7F9FF;
+    }
+
+    .convertpro-message-review .convertpro-review-question {
+        margin-bottom: 4px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #080E13;
+    }
+
+    .convertpro-review-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    /*
+     * Match the buttons the rest of the plugin uses — dark for the action we
+     * want, outlined for the alternative — instead of inheriting WordPress
+     * core's blue, which belongs to a different design.
+     */
+    .convertpro-review-actions .button,
+    .convertpro-review-actions .button:hover,
+    .convertpro-review-actions .button:focus {
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(8, 14, 19, 0.12);
+        background: #fff;
+        color: #080E13;
+        font-size: 13px;
+        font-weight: 500;
+        box-shadow: none;
+        text-shadow: none;
+    }
+
+    .convertpro-review-actions .button-primary,
+    .convertpro-review-actions .button-primary:hover,
+    .convertpro-review-actions .button-primary:focus {
+        border-color: #080E13;
+        background: #080E13;
+        color: #fff;
+    }
+
+    .convertpro-review-actions .convertpro-review-later {
+        font-size: 12px;
+        color: #7C838A;
+        text-decoration: none;
+        box-shadow: none;
+    }
+
+    .convertpro-review-actions .convertpro-review-later:hover {
+        color: #080E13;
+    }
+
     .convertpro-message-success {
         border-left-color: #3BCB38;
         background: #F4FCF4;
@@ -247,6 +309,50 @@ wp_enqueue_script('chart');
 
                 </select>
             </div>
+            <?php
+            // Up here with the other notices, not trailing off the bottom of the
+            // page where it reads as an afterthought. Still only on this screen,
+            // still declinable twice over — see docs/review-prompt-plan.md.
+            $convertpro_review = convertpro_review_state();
+            ?>
+
+            <?php if (convertpro_should_ask_for_review($test_id)) : ?>
+                <div class="convertpro-message convertpro-message-review">
+                    <p class="convertpro-review-question"><?php esc_html_e('Is EasyTest working out for you?', 'convertpro'); ?></p>
+                    <p class="convertpro-review-actions">
+                        <a class="button button-primary" href="<?php echo esc_url(convertpro_review_action_url('happy', $test_id)); ?>"><?php esc_html_e('Yes, it is', 'convertpro'); ?></a>
+                        <a class="button" href="<?php echo esc_url(convertpro_review_action_url('unhappy', $test_id)); ?>"><?php esc_html_e('Not really', 'convertpro'); ?></a>
+                        <a class="convertpro-review-later" href="<?php echo esc_url(convertpro_review_action_url('later', $test_id)); ?>"><?php esc_html_e('Ask me later', 'convertpro'); ?></a>
+                        <a class="convertpro-review-later" href="<?php echo esc_url(convertpro_review_action_url('dismissed', $test_id)); ?>"><?php esc_html_e('No thanks', 'convertpro'); ?></a>
+                    </p>
+                </div>
+            <?php elseif (convertpro_should_show_review_link()) : ?>
+                <div class="convertpro-message convertpro-message-review">
+                    <?php if ('happy' === $convertpro_review['answer']) : ?>
+                        <p class="convertpro-review-question"><?php esc_html_e('Good to hear.', 'convertpro'); ?></p>
+                        <p><?php esc_html_e('A review on WordPress.org is the main way other people find EasyTest. It takes a minute.', 'convertpro'); ?></p>
+                    <?php else : ?>
+                        <p class="convertpro-review-question"><?php esc_html_e('Sorry to hear it.', 'convertpro'); ?></p>
+                        <p>
+                            <?php
+                            printf(
+                                /* translators: 1: opening link tag to the support forum, 2: closing link tag. */
+                                esc_html__('Tell us what is wrong on %1$sthe support forum%2$s and we will look at it. Most of what people reported has since been fixed.', 'convertpro'),
+                                '<a href="https://wordpress.org/support/plugin/convertpro/" target="_blank" rel="noopener">',
+                                '</a>'
+                            );
+                            ?>
+                        </p>
+                        <?php // The link is here either way. We are not deciding who gets to rate the plugin. ?>
+                        <p class="description"><?php esc_html_e('If you would rather say it publicly, a review works too:', 'convertpro'); ?></p>
+                    <?php endif; ?>
+                    <p class="convertpro-review-actions">
+                        <a class="button<?php echo 'happy' === $convertpro_review['answer'] ? ' button-primary' : ''; ?>" href="<?php echo esc_url(convertpro_review_action_url('clicked', $test_id)); ?>" target="_blank" rel="noopener"><?php esc_html_e('Leave a review', 'convertpro'); ?></a>
+                        <a class="convertpro-review-later" href="<?php echo esc_url(convertpro_review_action_url('dismissed', $test_id)); ?>"><?php esc_html_e('No thanks', 'convertpro'); ?></a>
+                    </p>
+                </div>
+            <?php endif; ?>
+
             <?php if (isset($_GET['message']) && $_GET['message'] === 'reset_success') : ?>
                 <div class="convertpro-message convertpro-message-success">
                     <p>

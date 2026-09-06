@@ -31,11 +31,17 @@ class Storedatabase
                     'conversion_page_id' => $this->conversion_page_id(),
                     'conversion_url' => $this->conversion_selector(),
                 ],
-                array('%s')
+                array('%s', '%d', '%s', '%s', '%s', '%d', '%s')
             );
             // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
             return $wpdb->insert_id;
         }
+
+        // The caller checks the nonce and the capability before getting here, so
+        // this is unreachable in practice. Return 0 rather than nothing so the
+        // caller has something to test — Store::RepoStore() stops on a falsy id
+        // instead of filing the versions against test 0.
+        return 0;
     }
 
     /**
@@ -48,15 +54,23 @@ class Storedatabase
         global $wpdb;
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 
+        $percentage = (int) $variation['percentage'];
+
         $result = $wpdb->insert($this->getVariationTable(), array(
             'name' => sanitize_text_field($variation['name']),
-            'percentage' => sanitize_text_field($variation['percentage']),
-            'page_id' => isset($variation['pageId']) ? sanitize_text_field($variation['pageId']) : null,
+            'percentage' => $percentage,
+            'page_id' => isset($variation['pageId']) ? (int) $variation['pageId'] : null,
             'splittest_id' => $id,
-            'class_name' => sanitize_text_field($variation['customclass']),
+            'class_name' => convertpro_safe_class_name(isset($variation['customclass']) ? $variation['customclass'] : ''),
             'active' => true,
+            // The share this version still has left in the current cycle. It has
+            // to start at the share itself: the front end only picks from
+            // versions with something left, and the automatic refill waits until
+            // every version is empty. Left at the column default of 0, a version
+            // added to a running test would sit out the rest of the cycle.
+            'remaining' => $percentage,
             'created_at' => current_time('mysql')
-        ), array('%s', '%d', '%d', '%s', '%s', '%d'));
+        ), array('%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s'));
 
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
         return $wpdb->insert_id;
@@ -90,17 +104,25 @@ class Storedatabase
     public function updateTestVariation($id, $data)
     {
         global $wpdb;
+
+        $percentage = (int) $data['percentage'];
+
+        // `remaining` is deliberately not written here. Whether the quota cycle
+        // restarts is a decision about the whole test, not about one row —
+        // Store::Repoupdate() compares the saved split with the submitted one and
+        // restarts every version together, so a save cannot leave some versions
+        // part-way through the old split and others at the start of the new one.
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $wpdb->update(
             $this->getVariationTable(),
             [
-                'name' => $data['name'],
-                'percentage' => $data['percentage'],
-                'page_id' => $data['postId'],
-                'class_name' => $data['customclass'],
+                'name' => sanitize_text_field($data['name']),
+                'percentage' => $percentage,
+                'page_id' => (int) $data['postId'],
+                'class_name' => convertpro_safe_class_name(isset($data['customclass']) ? $data['customclass'] : ''),
             ],
             ['id' => $id],
-            ['%s', '%d', '%s'],
+            ['%s', '%d', '%d', '%s'],
             ['%d']
         );
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery

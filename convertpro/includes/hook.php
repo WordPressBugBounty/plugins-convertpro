@@ -53,6 +53,22 @@ function convertpro_vari_btn()
                 return prefix + Math.random().toString(36).substr(2, 9);
             }
 
+            // The number in test-variation[N] is what decides where each row lands
+            // in the array PHP receives, so the rows have to be renumbered every
+            // time one is added or removed. Without it, deleting a row from the
+            // middle and then adding one gives two rows the same number, PHP keeps
+            // only the last, and the test saves with a version missing.
+            function renumberVariations() {
+                jQuery('.convertpro-data-variation').each(function(index) {
+                    jQuery(this).find('[name^="test-variation["]').each(function() {
+                        var renumbered = jQuery(this).attr('name')
+                            .replace(/^test-variation\[[^\]]*\]/, 'test-variation[' + index + ']');
+
+                        jQuery(this).attr('name', renumbered);
+                    });
+                });
+            }
+
             function addNewVariation() {
                 var variationsContainer = jQuery('#variations-container');
                 var currentVariationsCount = jQuery('.convertpro-data-variation').length;
@@ -90,12 +106,12 @@ function convertpro_vari_btn()
                             </div>
                             <div class="actions">
                                 <div class="button-delete">&times;</div>
-                                <input type="hidden" name="test-variation[${newIndex}][id]" value="" required />
                             </div>
                         </div>
                     `;
 
                     variationsContainer.append(newVariation);
+                    renumberVariations();
                     refreshControls();
             }
 
@@ -109,6 +125,7 @@ function convertpro_vari_btn()
             jQuery(document).on('click', '.button-delete', function() {
                 if (jQuery('.convertpro-data-variation').length > 2) {
                     jQuery(this).closest('.convertpro-data-variation').remove();
+                    renumberVariations();
                     refreshControls();
                 }
             });

@@ -41,6 +41,9 @@ class Init
             } else if ($_GET['action'] == "toggle") {
                 $controller->RepoToggleActive();
                 // phpcs:ignore
+            } else if ($_GET['action'] == "review") {
+                $controller->RepoReview();
+                // phpcs:ignore
             } else if ($_GET['action'] == "store") {
                 $controller->RepoStore();
                 // phpcs:ignore

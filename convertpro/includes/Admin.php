@@ -18,8 +18,14 @@ class Admin
     {
         add_action('admin_menu', [$this, 'admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
-        add_action('wp_enqueue_scripts', [$this, 'wp_enqueue_scripts']);
     }
+
+    /**
+     * The admin screen our own assets belong on.
+     *
+     * @var string
+     */
+    private $hook = '';
 
     /**
      * Register our menu page
@@ -34,6 +40,8 @@ class Admin
         $slug       = 'convertpro-settings';
 
         $hook = add_menu_page(__('EasyTest', 'convertpro'), __('EasyTest', 'convertpro'), $capability, $slug, [$this, 'ab_tester_settings'], 'dashicons-text');
+
+        $this->hook = $hook;
         // add_submenu_page($slug, __('Settings', 'convertpro'), __('Settings', 'convertpro'), $capability, 'convertpro-settings', [$this, 'ab_tester_settings']);
         // if (current_user_can($capability)) {
         //     $submenu[$slug][] = array(__('App', 'convertpro'), $capability, 'admin.php?page=' . $slug . '#/');
@@ -49,21 +57,23 @@ class Admin
      *
      * @return void
      */
-    public function enqueue_scripts()
+    public function enqueue_scripts($hook_suffix = '')
     {
+        // Only on our own screen. These were loading on every page of wp-admin,
+        // which meant a stylesheet with a plain `p` rule restyling other people's
+        // screens, select2 downloaded for nothing, and a query for every
+        // published slug on the site running on every admin request.
+        if ($hook_suffix !== $this->hook) {
+            return;
+        }
+
         wp_enqueue_style('convertpro-admin');
         wp_enqueue_style('select2-style');
-        wp_enqueue_script('convertpro-admin');
         wp_enqueue_script('test-variations-admin');
         wp_enqueue_script('ab-tester-select2');
 
         wp_localize_script('test-variations-admin', 'convertproForm', $this->form_validation_data());
         // wp_enqueue_script('test-variations-admin', CONVERTPRO_ASSETS . '/js/test-variation.js', ['jquery'], CONVERTPRO_VERSION, true);
-    }
-    public function wp_enqueue_scripts()
-    {
-        // write a code here
-        wp_enqueue_script('convertpro-frontend');
     }
 
     /**

@@ -5,7 +5,7 @@ use Finestics\Client;
  * Plugin Name: EasyTest - Simplify A/B Testing (Former ConvertPro)
  * Plugin URI: https://wpgrids.com/
  * Description: EasyTest allows you to ab testing.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: wpgrids
  * Author URI: https://profiles.wordpress.org/wpgrids/
  * Text Domain: convertpro
@@ -40,7 +40,7 @@ final class ConvertPro
      *
      * @var string
      */
-    public $version = '1.0.3';
+    public $version = '1.0.4';
 
     /**
      * Holds various class instances
@@ -62,28 +62,7 @@ final class ConvertPro
 
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_scripts'));
         add_action('plugins_loaded', array($this, 'init_plugin'));
-    }
-    public function enqueue_frontend_scripts()
-    {
-        // Enqueue your JavaScript file
-        wp_enqueue_script(
-            'frontent-script',
-            plugin_dir_url(__FILE__) . 'assets/js/frontent-script.js',
-            array('jquery'),
-            '1.0',
-            true
-        );
-
-        wp_localize_script(
-            'frontent-script',
-            'convertpro_object',
-            array(
-                'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('convertpro_nonce')
-            )
-        );
     }
     /**
      * Initializes the ConvertPro() class
@@ -327,6 +306,25 @@ final class ConvertPro
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $max_id = (int) $wpdb->get_var("SELECT MAX(id) FROM {$wpdb->prefix}convertpro_interactions");
             update_option('convertpro_engine_fix_max_id', $max_id);
+        }
+
+        // The interactions table was first created with created_at defaulting to
+        // '0000-00-00 00:00:00', and dbDelta does not change a default on a
+        // column that already exists. Every row written on those installs has no
+        // entry date, so the report falls back to updated_at — which moves when a
+        // view is flipped to a conversion, dragging the visit into the day it
+        // converted. Repair the default once; rows already written keep the
+        // fallback, since their entry time cannot be recovered.
+        if (!get_option('convertpro_created_at_default')) {
+            global $wpdb;
+
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+            $wpdb->query(
+                "ALTER TABLE {$wpdb->prefix}convertpro_interactions
+                MODIFY created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            );
+
+            update_option('convertpro_created_at_default', 1);
         }
 
         update_option('convertpro_looping_tests', $this->find_looping_tests());

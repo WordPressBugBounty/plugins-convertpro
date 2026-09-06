@@ -43,10 +43,22 @@ class ElementRedirection
 
     public function manipulate_html($buffer)
     {
-        // Load the buffer into the object
-
         global $wpdb;
-        $dom = HtmlDomParser::str_get_html($buffer);
+
+        // The buffer opens on init, so it catches everything the site sends that
+        // is not an admin screen: the RSS feed, the XML sitemap, REST responses.
+        // Running those through an HTML parser rewrites them — feeds came back
+        // with <pubDate> lowercased to <pubdate>, which XML readers will not
+        // accept. Only touch something that is actually an HTML page. The XML
+        // check is separate because the sitemap stylesheet is XML that happens
+        // to contain an <html> element.
+        if (false === stripos($buffer, '<html') || 0 === strpos(ltrim($buffer), '<?xml')) {
+            return $buffer;
+        }
+
+        // Keep line breaks. The parser strips them by default, which flattens
+        // everything inside <pre>, <code> and <textarea> onto a single line.
+        $dom = HtmlDomParser::str_get_html($buffer, true, true, DEFAULT_TARGET_CHARSET, false);
 
         // The parser returns false for output it cannot handle — an empty buffer
         // on shutdown, for one — and calling find() on that is a fatal error.
@@ -54,14 +66,15 @@ class ElementRedirection
             return $buffer;
         }
 
+        // Rebuilding the page through the parser is not free and not lossless, so
+        // only hand back a rebuilt page when a version was actually removed.
+        $changed = false;
+
         $styles = '';
         $active_class = '';
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
         $results = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}convertpro WHERE test_type='elements' AND active = 1");
-        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-        $allVariations = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}convertpro_variations where class_name != '' ");
         $output = '';
         foreach ($results as $value) {
             // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
@@ -82,6 +95,13 @@ class ElementRedirection
 
             // $this->autoSelectElement();
             foreach ($variations as $variation) {
+                // A class that is really selector syntax matches things it was
+                // never meant to. Rows saved before this was checked can still
+                // hold one, so skip them here rather than trusting the column.
+                if ('' === convertpro_safe_class_name($variation->class_name)) {
+                    continue;
+                }
+
                 if (empty($active_class)) {
 
                     if ($dom->find('.' . $variation->class_name)) {
@@ -98,6 +118,7 @@ class ElementRedirection
                     foreach ($dom->find('.' . $variation->class_name) as $element) {
 
                         $element->remove();
+                        $changed = true;
                     }
                 }
             }
@@ -105,11 +126,11 @@ class ElementRedirection
 
 
 
-        // Manipulate the HTML here
-        // For example, let's change all <h1> tags to <h2>
-
-
-
+        // Nothing was swapped out, so send the page the theme built rather than
+        // the parser's rebuild of it.
+        if (!$changed) {
+            return $buffer;
+        }
 
         return $dom->save();
         // return $output;
@@ -160,7 +181,9 @@ class ElementRedirection
                 $user_variation_id = isset($_COOKIE[$variationCookie]) ? sanitize_text_field(wp_unslash($_COOKIE[$variationCookie])) : '';
                 $client_id = isset($_COOKIE['convert_pro_uid']) ? sanitize_text_field(wp_unslash($_COOKIE['convert_pro_uid'])) : '';
 
-                if ($user_variation_id == $variation->id && !empty($active_class)) {
+                // Without a visitor id there is no row to flip, and the update
+                // would match on client_id = '' instead.
+                if ($user_variation_id == $variation->id && !empty($active_class) && '' !== $client_id) {
                     // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
                     // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
                     $wpdb->update(
@@ -258,13 +281,20 @@ class ElementRedirection
         // not be stored and handed to the next visitor.
         convertpro_prevent_page_cache();
 
+        // Take one off the quota in the database rather than writing back the
+        // number this request read, so two visitors arriving together cannot
+        // cost the quota only one. $remaining is left in the signature but no
+        // longer used.
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // $remaining = $variation->remaining - 1;
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-        $result = $wpdb->update(
-            $wpdb->prefix . 'convertpro_variations',
-            array('remaining' => $remaining),
-            array('id' => $variation->id, 'splittest_id' => $testid)
+        $result = $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$wpdb->prefix}convertpro_variations
+                SET remaining = remaining - 1
+                WHERE id = %d AND splittest_id = %d AND remaining > 0",
+                $variation->id,
+                $testid
+            )
         );
 
         $expires = time() + CONVERTPRO_COOKIE_LIFETIME;
@@ -404,6 +434,8 @@ class ElementRedirection
 
         if (empty($query)) {
             $table_name = $wpdb->prefix . 'convertpro_interactions';
+            // created_at is left to the column default on purpose — see the
+            // matching insert in Redirection::store_visit_data().
             $wpdb->insert(
                 $table_name,
                 [

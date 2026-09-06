@@ -1,7 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+/* The admin screens use the same font stack as the rest of wp-admin, so they
+   look native and nothing is fetched from a font service. */
+:root {
+    --convertpro-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
 p {
     margin: 0;
-    font-family: "Inter", sans-serif;
+    font-family: var(--convertpro-font);
 }
 a:focus {
     box-shadow: none;
@@ -18,7 +22,7 @@ a:focus {
 }
 
 .convertpro-title-btn h4 {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 18px;
     font-weight: 600;
     line-height: 28px;
@@ -46,7 +50,7 @@ td.button-col {
 }
 .convertpro-test-index .wp-list-table a {
     transition: none;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
@@ -63,7 +67,7 @@ a.report-button {
     font-size: 12px;
     line-height: 21px;
     font-weight: 500;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     color: #080E13;
     display: inline-block;
     outline: none;
@@ -108,7 +112,7 @@ a.edit-button {
 }
 .create-update-test h4 {
     margin: 0px;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 18px;
     font-weight: 600;
     line-height: 28px;
@@ -118,7 +122,7 @@ a.edit-button {
 
 .test-conversion-page h4 {
     margin: 0;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -128,7 +132,7 @@ a.edit-button {
 }
 
 .test-conversion-page p {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 12px;
     font-weight: 400;
     line-height: 20px;
@@ -176,7 +180,7 @@ input.text-name {
     justify-content: space-around;
     align-items: center;
     color: rgba(0, 0, 0,0.6);
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 12px;
     font-weight: 400;
     line-height: 20px;
@@ -203,7 +207,7 @@ input.text-name {
     min-height: 40px;
     padding-left: 10px;
     padding-right: 10px;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;
@@ -250,7 +254,7 @@ input.text-name {
     border: 0;
     border-radius: 8px;
     min-height: 40px;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
@@ -278,7 +282,7 @@ input.text-name {
 }
 
 .convertpro-title-btn h2 {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 18px;
     font-weight: 600;
     line-height: 28px;
@@ -296,7 +300,7 @@ input.text-name {
     text-decoration: none;
     border-radius: 8px;
     background-color: #080E13;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 21px;
@@ -329,7 +333,7 @@ td.button-col {
 }
 .convertpro-test-index .wp-list-table a {
     transition: none;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
@@ -354,7 +358,7 @@ a.report-button {
     font-size: 12px;
     line-height: 21px;
     font-weight: 500;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     color: #080E13;
     display: inline-block;
     outline: none;
@@ -391,7 +395,7 @@ a.edit-button {
 .back-test a {
     align-items: center;
     display: flex;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 21px;
@@ -412,7 +416,7 @@ a.edit-button {
 }
 .create-update-test h4 {
     margin: 0px;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 18px;
     font-weight: 600;
     line-height: 28px;
@@ -427,7 +431,7 @@ a.edit-button {
     border-radius: 8px;
     border: none;
     box-shadow: none;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 21px;
@@ -437,7 +441,7 @@ a.edit-button {
 }
 .test-conversion-page h4 {
     margin: 0;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -460,7 +464,7 @@ a.edit-button {
     clear: both;
 }
 .test-conversion-page p {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 12px;
     font-weight: 400;
     line-height: 20px;
@@ -491,7 +495,7 @@ input.text-name {
     height: 40px;
     line-height: 40px;
     border-radius: 8px;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;
@@ -543,7 +547,7 @@ input.text-name:focus,
     outline: none;
     border-left: 1px solid #CBD2D9;
     color: #080E13;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
@@ -557,7 +561,7 @@ input.text-name:focus,
 .convertpro-headline label,
 .test-type-title h2 {
     color: #000000;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -568,7 +572,7 @@ input.text-name:focus,
 }
 .test-name-wrap p,
 .convertpro-headline p {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 12px;
     font-weight: 400;
     line-height: 20px;
@@ -577,7 +581,7 @@ input.text-name:focus,
     margin-bottom: 20px;
 }
 .convertpro-headline span {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;
@@ -593,7 +597,7 @@ input.text-name:focus,
     height: 40px;
     border-radius: 8px;
     border: 1px solid #080E13;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     text-align: center;
@@ -636,7 +640,7 @@ input.text-name:focus,
     height: 40px;
     line-height: 40px;
     border-radius: 8px;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;
@@ -722,7 +726,7 @@ a.pageview-btn {
 /*report css*/
 
 .convertpro-data-table h4 {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 18px;
     font-weight: 600;
     line-height: 28px;
@@ -743,7 +747,7 @@ a.pageview-btn {
     border: 0px;
     padding: 0;
     padding: 16px 12px;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
@@ -761,7 +765,7 @@ a.pageview-btn {
     margin: 0;
 }
 .convertpro-fullreport table th {
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     text-transform: uppercase;
     padding: 16px 12px;
     color: #7C838A;
@@ -790,7 +794,7 @@ a.convertpro-toggle-button {
     font-size: 12px;
     line-height: 21px;
     font-weight: 500;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     color: #080E13;
     display: inline-block;
     outline: none;
@@ -870,7 +874,7 @@ select.convertpro-invalid {
 
 .convertpro-goal-card .convertpro-goal-field label {
     display: block;
-    font-family: 'Inter';
+    font-family: var(--convertpro-font);
     font-size: 14px;
     font-weight: 600;
     color: #080E13;

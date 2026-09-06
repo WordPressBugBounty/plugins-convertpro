@@ -3,6 +3,33 @@
 if (!defined('ABSPATH')) {
     exit; // Called directly, nothing to do here.
 }
+
+// A save that was turned away comes back as a fresh page load, so what someone
+// typed only survives if it was put aside first. Fill the form from that when
+// there is one, otherwise from the saved test as before. The draft is tied to
+// the test it was typed against, so a rejected new test cannot reappear on a
+// different test's form and be saved over it.
+if (is_object($test)) {
+    $convertpro_draft = convertpro_take_form_draft(isset($test->id) ? (int) $test->id : 0);
+
+    if ($convertpro_draft) {
+        $test->name = $convertpro_draft['name'];
+        $test->test_type = $convertpro_draft['test_type'];
+        $test->test_uri = $convertpro_draft['test_uri'];
+        $test->conversion_type = $convertpro_draft['conversion_type'];
+        $test->conversion_page_id = $convertpro_draft['conversion_page_id'];
+        $test->conversion_url = $convertpro_draft['conversion_url'];
+
+        if (!empty($convertpro_draft['variations'])) {
+            $test->variations = array();
+
+            foreach ($convertpro_draft['variations'] as $convertpro_row) {
+                $test->variations[] = (object) $convertpro_row;
+            }
+        }
+    }
+}
+
 if ($scope == "edit") {
     $formUrl = admin_url('admin.php?page=convertpro-settings&scope=test&action=update&id=' . $test->id);
 } else {
@@ -48,8 +75,10 @@ if ($scope == "edit") {
         'error_conversion_is_variation' => array('error', __('The conversion page is also one of the versions being tested, so everyone would convert the moment they arrive. Choose a different page.', 'convertpro')),
         'error_variation_class_missing' => array('error', __('Every version needs a CSS class. Copy it into your page builder on the element you want to test.', 'convertpro')),
         'error_variation_class_duplicate' => array('error', __('Two versions use the same CSS class. Each one needs its own.', 'convertpro')),
+        'error_variation_class_invalid' => array('error', __('A CSS class can only use letters, numbers, dashes and underscores — something like hero-version-a. Symbols such as * or a comma would match the wrong part of your page.', 'convertpro')),
         'security_error' => array('error', __('That request could not be verified. Please try again.', 'convertpro')),
         'error_update_data_missing' => array('error', __('Something was missing from that request. Please try again.', 'convertpro')),
+        'error_test_not_saved' => array('error', __('The test could not be saved. Nothing was lost — everything you filled in is still here, so try again.', 'convertpro')),
     );
 
     if (isset($convertpro_notices[$convertpro_message])) :
@@ -221,7 +250,6 @@ if ($scope == "edit") {
 
                         <div class="actions">
                             <div class="button-delete">&times;</div>
-                            <input name="test-variation[<?php echo esc_attr(($i)); ?>][id]" type="hidden" value="<?php echo esc_attr(($variation->id)); ?>" />
                         </div>
                     </div>
 

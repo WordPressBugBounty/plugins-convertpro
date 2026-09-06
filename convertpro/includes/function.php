@@ -246,6 +246,7 @@ function convertpro_record_cap_blocked($what)
 function convertpro_free_tier_usage()
 {
     $usage = get_option('convertpro_cap_usage', array());
+    $review = convertpro_review_state();
 
     return array(
         'free_limits' => (string) get_option('convertpro_free_limits', 'unknown'),
@@ -254,6 +255,178 @@ function convertpro_free_tier_usage()
         'cap_reached' => isset($usage['reached']) ? (int) $usage['reached'] : 0,
         'cap_blocked_tests' => isset($usage['blocked_tests']) ? (int) $usage['blocked_tests'] : 0,
         'cap_blocked_variations' => isset($usage['blocked_variations']) ? (int) $usage['blocked_variations'] : 0,
+
+        // The review ask. `review_clicked_at` means they went to WordPress.org,
+        // not that they left a review — WordPress.org tells us nothing back, so
+        // there is no honest way to know. Do not label it as reviews.
+        'review_asked_at' => (int) $review['asked_at'],
+        'review_answer' => (string) $review['answer'],
+        'review_clicked_at' => (int) $review['clicked_at'],
+    );
+}
+
+/**
+ * Everything the site has done with the review ask.
+ *
+ * One option, one decision per site rather than per user: two administrators
+ * should not each be asked.
+ *
+ * @return array
+ */
+function convertpro_review_state()
+{
+    $state = get_option('convertpro_review', array());
+
+    return wp_parse_args(is_array($state) ? $state : array(), array(
+        'asked_at' => 0,     // first time the ask was shown
+        'answer' => '',      // happy | unhappy | later | dismissed
+        'answered_at' => 0,
+        'clicked_at' => 0,   // went to wordpress.org
+    ));
+}
+
+/**
+ * Record something the visitor did with the ask.
+ *
+ * @param array $changes
+ * @return void
+ */
+function convertpro_review_update($changes)
+{
+    update_option('convertpro_review', array_merge(convertpro_review_state(), $changes));
+}
+
+/**
+ * Has this test produced something worth reviewing the plugin over?
+ *
+ * The bar is that the plugin visibly did its job in the current run: visitors
+ * were split across at least two versions, and at least one conversion was
+ * recorded. That is assignment and conversion tracking both demonstrably
+ * working, which is the whole thing being reviewed.
+ *
+ * It was briefly stricter — conversions on *two* versions — and that turned out
+ * to be nearly unreachable. Across five real tests carrying 11 to 66 visitors,
+ * only two ever qualified, so most report screens would have shown nothing at
+ * all. Conversions land on one version long before they land on both.
+ *
+ * @param int $test_id
+ * @return bool
+ */
+function convertpro_test_has_result($test_id)
+{
+    global $wpdb;
+
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $row = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT COUNT(DISTINCT variation_id) AS versions,
+                    SUM(CASE WHEN type = 'conversion' THEN 1 ELSE 0 END) AS conversions
+             FROM {$wpdb->prefix}convertpro_interactions
+             WHERE splittest_id = %d AND run = %d",
+            (int) $test_id,
+            convertpro_get_test_run($test_id)
+        )
+    );
+
+    if (!$row) {
+        return false;
+    }
+
+    return (int) $row->versions >= 2 && (int) $row->conversions >= 1;
+}
+
+/**
+ * Should the review ask appear on this report screen?
+ *
+ * @param int $test_id
+ * @return bool
+ */
+function convertpro_should_ask_for_review($test_id)
+{
+    if (!current_user_can('manage_options')) {
+        return false;
+    }
+
+    $state = convertpro_review_state();
+
+    // Asked once. Dismissed, answered happily, or already clicked through, and
+    // that is the end of it.
+    if ($state['clicked_at'] || in_array($state['answer'], array('happy', 'unhappy', 'dismissed'), true)) {
+        return false;
+    }
+
+    // "Not now" earns a long silence, and only then if they are still using it.
+    if ('later' === $state['answer'] && $state['answered_at'] > time() - (30 * DAY_IN_SECONDS)) {
+        return false;
+    }
+
+    /**
+     * Filter the review ask off entirely.
+     *
+     * @param bool $show
+     */
+    if (!apply_filters('convertpro_show_review_ask', true)) {
+        return false;
+    }
+
+    return convertpro_test_has_result($test_id);
+}
+
+/**
+ * Should the follow-up — the one carrying the review link — still be shown?
+ *
+ * Only after they answered, only until they act on it, and **only for a
+ * fortnight**. Without the time limit it would sit on the report screen for the
+ * life of the install waiting to be clicked, which is a nag by any other name.
+ * Two weeks of not clicking is an answer.
+ *
+ * @return bool
+ */
+function convertpro_should_show_review_link()
+{
+    if (!current_user_can('manage_options')) {
+        return false;
+    }
+
+    $state = convertpro_review_state();
+
+    if ($state['clicked_at'] || !in_array($state['answer'], array('happy', 'unhappy'), true)) {
+        return false;
+    }
+
+    if (!apply_filters('convertpro_show_review_ask', true)) {
+        return false;
+    }
+
+    return $state['answered_at'] > time() - (14 * DAY_IN_SECONDS);
+}
+
+/**
+ * Where the review link points.
+ *
+ * @return string
+ */
+function convertpro_review_url()
+{
+    return 'https://wordpress.org/support/plugin/convertpro/reviews/#new-post';
+}
+
+/**
+ * A nonce-checked link that records an answer before going anywhere.
+ *
+ * @param string $answer  happy | unhappy | later | dismissed
+ * @param int    $test_id Report being viewed, so we can come back to it.
+ * @return string
+ */
+function convertpro_review_action_url($answer, $test_id)
+{
+    return wp_nonce_url(
+        admin_url(sprintf(
+            'admin.php?page=convertpro-settings&scope=test&action=review&answer=%s&id=%d',
+            rawurlencode($answer),
+            (int) $test_id
+        )),
+        'convertpro-review'
     );
 }
 
@@ -535,6 +708,103 @@ function convertpro_get_test_run($test_id)
 }
 
 /**
+ * Keep a version's CSS class to the characters a class can actually contain.
+ *
+ * The class is typed by hand and the element engine hands it straight to a CSS
+ * selector, so anything that is selector syntax rather than a name changes what
+ * the selector matches. A class of `*` matches every element on the page,
+ * including <html>, and removing those leaves the visitor a blank page.
+ *
+ * @param string $class
+ * @return string The class, or an empty string when it is not a plain class name.
+ */
+function convertpro_safe_class_name($class)
+{
+    $class = trim((string) $class);
+
+    return preg_match('/^[A-Za-z0-9_-]+$/', $class) ? $class : '';
+}
+
+/**
+ * Hold on to what someone typed when a save is turned away.
+ *
+ * Saving redirects, so $_POST is gone by the time the form is drawn again and
+ * the form only knows how to fill itself in from a saved test. That is fine for
+ * an edit and useless for a create: the work is simply lost, which is harsh when
+ * the only thing wrong was that the page had been open too long.
+ *
+ * The draft is keyed to the person, used once, and short-lived.
+ *
+ * @param int $test_id Test being updated, or 0 when creating.
+ * @return void
+ */
+function convertpro_stash_form($test_id = 0)
+{
+    // phpcs:disable WordPress.Security.NonceVerification.Missing -- callers verify the nonce first.
+    $variations = array();
+
+    if (isset($_POST['test-variation']) && is_array($_POST['test-variation'])) {
+        foreach (wp_unslash($_POST['test-variation']) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $variations[] = array(
+                'id' => isset($row['id']) ? sanitize_text_field($row['id']) : '',
+                'name' => isset($row['name']) ? sanitize_text_field($row['name']) : '',
+                'page_id' => isset($row['page-id']) ? (int) $row['page-id'] : 0,
+                'percentage' => isset($row['percentage']) ? sanitize_text_field($row['percentage']) : '',
+                'class_name' => isset($row['customclass']) ? sanitize_text_field($row['customclass']) : '',
+            );
+        }
+    }
+
+    $draft = array(
+        'test_id' => (int) $test_id,
+        'name' => isset($_POST['test-name']) ? sanitize_text_field(wp_unslash($_POST['test-name'])) : '',
+        'test_type' => isset($_POST['convertpro-test-type']) ? sanitize_text_field(wp_unslash($_POST['convertpro-test-type'])) : '',
+        'test_uri' => isset($_POST['test-uri']) ? sanitize_text_field(wp_unslash($_POST['test-uri'])) : '',
+        'conversion_type' => isset($_POST['test-conversion-type']) ? sanitize_text_field(wp_unslash($_POST['test-conversion-type'])) : '',
+        'conversion_page_id' => isset($_POST['test-conversion-page']) ? (int) $_POST['test-conversion-page'] : 0,
+        'conversion_url' => isset($_POST['test-conversion-selector']) ? wp_strip_all_tags(wp_unslash($_POST['test-conversion-selector'])) : '',
+        'variations' => $variations,
+    );
+    // phpcs:enable WordPress.Security.NonceVerification.Missing
+
+    set_transient('convertpro_form_draft_' . get_current_user_id(), $draft, 15 * MINUTE_IN_SECONDS);
+}
+
+/**
+ * Take back the draft left by a turned-away save, if it belongs on this form.
+ *
+ * Used once: a draft left by a rejected create must not reappear on an unrelated
+ * test's edit screen, where saving would write it over that test.
+ *
+ * @param int $test_id Test being edited, or 0 for the create form.
+ * @return array|false
+ */
+function convertpro_take_form_draft($test_id = 0)
+{
+    $key = 'convertpro_form_draft_' . get_current_user_id();
+    $draft = get_transient($key);
+
+    if (!is_array($draft)) {
+        return false;
+    }
+
+    // Belongs to a different form. Leave it alone rather than consuming it —
+    // glancing at another test's form should not throw away the work someone
+    // still has waiting on the form it came from. It expires on its own.
+    if ((int) $test_id !== (isset($draft['test_id']) ? (int) $draft['test_id'] : 0)) {
+        return false;
+    }
+
+    delete_transient($key);
+
+    return $draft;
+}
+
+/**
  * Build a run-scoped cookie name, e.g. convert_pro_test_5_r2.
  *
  * @param string $prefix  Cookie prefix, including the trailing underscore.
@@ -544,92 +814,6 @@ function convertpro_get_test_run($test_id)
 function convertpro_test_cookie_name($prefix, $test_id)
 {
     return $prefix . (int) $test_id . '_r' . convertpro_get_test_run($test_id);
-}
-
-// AJAX handler to handle requests
-add_action('wp_ajax_convertpro_ajax_action', 'convertpro_ajax_request');
-add_action('wp_ajax_nopriv_convertpro_ajax_action', 'convertpro_ajax_request');
-
-function convertpro_ajax_request()
-{
-    check_ajax_referer('convertpro_nonce', 'security');
-
-    global $wpdb;
-
-    $testId = isset($_COOKIE['convert_pro_test_id']) ? sanitize_text_field(wp_unslash($_COOKIE['convert_pro_test_id'])) : '';
-    $variationid = isset($_COOKIE['convert_pro_variation_id_'.$testId]) ? sanitize_text_field(wp_unslash($_COOKIE['convert_pro_variation_id_'.$testId])) : '';
-    $clientId = isset($_COOKIE['convert_pro_uid']) ? sanitize_text_field(wp_unslash($_COOKIE['convert_pro_uid'])) : '';
-    $pageslug = isset($_COOKIE['convert_pro_test_' . $testId]) ? sanitize_text_field(wp_unslash($_COOKIE['convert_pro_test_' . $testId])) : '';
-    // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-    
-    $results = $wpdb->get_results($wpdb->prepare("SELECT * FROM " . $wpdb->prefix . "convertpro" . " WHERE id =%d", $testId)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-    
-    $pageId = '';
-    foreach ($results as $result) {
-        $pageId = isset($result->conversion_page_id) ? $result->conversion_page_id : '';
-    }
-
-    $permalink = get_permalink($pageId);
-
-    $purl = isset($_POST['previous_url']) ? sanitize_text_field(wp_unslash($_POST['previous_url'])) : '';
-
-    $parsedUrl = wp_parse_url($purl);
-    $path = isset($parsedUrl['path']) ? $parsedUrl['path'] : '';
-    $path = trim($path, '/');
-
-    // Get the last segment (page slug)
-    $segments = explode('/', $path);
-    $pageSlug = end($segments);
-
-
-    $fpath = isset($_SERVER['HTTP_REFERER']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_REFERER'])) : '';
-
-
-    $message = '';
-    if ($pageSlug == $pageslug) {
-
-        if ($fpath === $permalink) {
-            
-            $query = $wpdb->get_results($wpdb->prepare(// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-                "SELECT * FROM {$wpdb->prefix}convertpro_interactions
-                WHERE splittest_id = %d
-                AND client_id = %s",
-                $testId,
-                $clientId
-            ), OBJECT);
-            // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-            if (sizeof($query) > 0) {
-                $query = $wpdb->query(// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-                    $wpdb->prepare(
-                        "UPDATE {$wpdb->prefix}convertpro_interactions
-                    SET type = 'conversion', variation_id = %d
-                    WHERE splittest_id = %d
-                    AND client_id = %s",
-                        $variationid,
-                        $testId,
-                        $clientId
-                    )
-                );
-                // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-            }
-        }
-    }
-
-
-
-    // Modify the URL value in the response array
-    $response = array(
-        'url' => $permalink,
-        'id' => $testId,
-        'variationdid' => $variationid,
-        'fpath' => $fpath,
-        'message' => $message
-    );
-
-    // Encode the array as JSON and output it
-
-
-    wp_die();
 }
 
 function convertpro_interactions_report_html()
@@ -965,8 +1149,14 @@ function convertpro_get_conversion($test_id, $variation_id, $range = 7)
 
     if ($range != 'all') {
 
-        $conversion_query .= " AND updated_at <= NOW()
-        AND updated_at >= DATE_SUB(NOW(), INTERVAL %s DAY)";
+        // The same window views are counted over, and for the same reason:
+        // a conversion belongs to the visit that produced it. Filtering these
+        // on updated_at instead counted someone who arrived a fortnight ago
+        // and converted yesterday as a conversion with no view behind it, so
+        // the rate could read above 100% and never matched the chart.
+        $entry_date = convertpro_entry_date_sql($table_name);
+        $conversion_query .= " AND {$entry_date} <= NOW()
+        AND {$entry_date} >= DATE_SUB(NOW(), INTERVAL %s DAY)";
         $conversion_placeholders[] = intval($range);
     }
 
