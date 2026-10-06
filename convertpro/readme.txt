@@ -4,7 +4,7 @@ Tags: ab testing, split testing, ab test, conversion rate, landing page
 Requires at least: 5.0
 Requires PHP: 7.0
 Tested up to: 7.1
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPL-2.0+
 License URI: http://www.gnu.org/licenses/gpl-2.0.txt
 
@@ -77,7 +77,7 @@ They see the same version they saw the first time. EasyTest remembers for 30 day
 A cookie so they keep seeing the same version, and one row in your own database recording that visit and whether it converted. The id in that row is a random string, not a name, an email address or an IP address. None of it ever leaves your site.
 
 = Does EasyTest send my data anywhere? =
-Only if you switch on the optional usage report, and it is off until you do. If you turn it on, once a week EasyTest sends wpgrids.com your site address and name, the administrator email and name, your server IP, your WordPress, PHP, MySQL, server and theme versions, how many plugins and users you have, when you installed EasyTest, how many tests you are running, and whether you answered the review question and clicked through to WordPress.org. We use it to decide what to build next, and you can switch it off again from the Plugins screen.
+Only if you switch on the optional usage report, and it is off until you do. If you turn it on, once a week EasyTest sends our server at analytics.thefarhan.com your site address and name, the administrator email and name, your server IP, your WordPress, PHP, MySQL, server and theme versions, how many plugins and users you have, when you installed EasyTest, how many tests you are running, and whether you answered the review question and clicked through to WordPress.org. We use it to decide what to build next, and you can switch it off again from the Plugins screen.
 
 = Do I have to fill in the form when I deactivate? =
 No. Skipping it deactivates the plugin just the same.
@@ -89,6 +89,11 @@ No. Skipping it deactivates the plugin just the same.
 3. The report: views, conversions and conversion rate for each version, day by day.
 
 == Changelog ==
+
+= 1.0.5 =
+
+* Fixed: Usage report had a dead address
+* Changed: Privacy notice names the right server
 
 = 1.0.4 =
 

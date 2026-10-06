@@ -119,7 +119,7 @@ class Client
      */
     public function endpoint()
     {
-        $endpoint = apply_filters('finestics_endpoint', 'https://analytics.finestwp.co/api/data-receiver');
+        $endpoint = apply_filters('finestics_endpoint', 'https://analytics.thefarhan.com/api/data-receiver');
 
         return trailingslashit($endpoint);
     }
