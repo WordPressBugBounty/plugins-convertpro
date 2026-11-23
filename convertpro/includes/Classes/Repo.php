@@ -44,8 +44,8 @@ class Repo
     {
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
         global $wpdb;
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
         // Ordered so the report always treats the same variation as the control.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching -- read once per admin screen; the counts change with every visit.
         $results = $wpdb->get_results($wpdb->prepare("SELECT * FROM " . $wpdb->prefix . "convertpro_variations" . " WHERE splittest_id =%d ORDER BY id ASC", $pageId));
 
         foreach ($results as $result) {

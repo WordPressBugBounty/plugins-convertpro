@@ -4,7 +4,7 @@ Tags: ab testing, split testing, ab test, conversion rate, landing page
 Requires at least: 5.0
 Requires PHP: 7.0
 Tested up to: 7.1
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 License: GPL-2.0+
 License URI: http://www.gnu.org/licenses/gpl-2.0.txt
 
@@ -77,10 +77,10 @@ They see the same version they saw the first time. EasyTest remembers for 30 day
 A cookie so they keep seeing the same version, and one row in your own database recording that visit and whether it converted. The id in that row is a random string, not a name, an email address or an IP address. None of it ever leaves your site.
 
 = Does EasyTest send my data anywhere? =
-Only if you switch on the optional usage report, and it is off until you do. If you turn it on, once a week EasyTest sends our server at analytics.thefarhan.com your site address and name, the administrator email and name, your server IP, your WordPress, PHP, MySQL, server and theme versions, how many plugins and users you have, when you installed EasyTest, how many tests you are running, and whether you answered the review question and clicked through to WordPress.org. We use it to decide what to build next, and you can switch it off again from the Plugins screen.
+Only if you switch on the optional usage report, which is off until you do, or fill in the short form when you deactivate. If you turn the report on, once a week EasyTest sends our server at analytics.thefarhan.com your site address and name, the administrator email and name, your server IP (looked up through icanhazip.com), your WordPress, PHP, MySQL, server and theme versions, how many plugins and users you have, when you installed EasyTest, how many tests you are running, and whether you answered the review question and clicked through to WordPress.org. We use it to decide what to build next, and you can switch it off again from the Plugins screen.
 
 = Do I have to fill in the form when I deactivate? =
-No. Skipping it deactivates the plugin just the same.
+No. Skipping it deactivates the plugin just the same. If you do fill it in, your answer goes to analytics.thefarhan.com with your WordPress and PHP versions. Your name, email and IP go with it only if you turned on the usage report.
 
 == Screenshots ==
 
@@ -89,6 +89,13 @@ No. Skipping it deactivates the plugin just the same.
 3. The report: views, conversions and conversion rate for each version, day by day.
 
 == Changelog ==
+
+= 1.0.6 =
+
+* Security: Fixed CVE-2026-110528 (Wordfence) — element tests no longer rewrite the whole page
+* Fixed: Element tests now work on long pages
+* Improved: Much lighter on memory, and the page comes back exactly as your theme wrote it
+* Changed: Deactivation feedback leaves out names, emails and IP unless you turned on the usage report
 
 = 1.0.5 =
 

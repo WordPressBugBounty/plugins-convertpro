@@ -312,13 +312,16 @@ class Insights
      */
     protected function data_we_collect()
     {
+        // Has to match get_tracking_data() item for item. It used to leave out
+        // the IP address and the theme.
         $data = array(
-            'Server environment details (php, mysql, server, WordPress versions)',
-            'Number of users in your site',
-            'Site language',
-            'Number of active and inactive plugins',
-            'Site name and url',
-            'Your name and email address',
+            'Server setup: PHP, MySQL, web server and WordPress versions',
+            'number of users on the site',
+            'site language',
+            'number of active and inactive plugins, and the active theme',
+            'site name and address',
+            "the site admin's name and email address",
+            "your server's IP address, looked up through icanhazip.com",
         );
 
         return $data;
@@ -426,25 +429,28 @@ class Insights
             $optout_url = wp_nonce_url(add_query_arg($this->client->slug . '_tracker_optout', 'true'), $this->client->slug . '_optin_optout');
 
             if (empty($this->notice)) {
-                $notice = sprintf($this->client->__trans('Want to help make <strong>%1$s</strong> even more awesome? Allow %1$s to collect non-sensitive diagnostic data and usage information.'), $this->client->name);
+                $notice = sprintf($this->client->__trans('Help us improve <strong>%1$s</strong>? If you allow it, %1$s sends us a usage report once a week.'), $this->client->name);
             } else {
                 $notice = $this->notice;
             }
 
             $policy_url = 'https://' . 'finestics.com/privacy-policy/';
 
-            $notice .= ' (<a class="' . $this->client->slug . '-insights-data-we-collect" href="#">' . $this->client->__trans('what we collect') . '</a>)';
-            $notice .= '<p class="description" style="display:none;">' . implode(', ', $this->data_we_collect()) . '. No sensitive data is tracked. ';
-            $notice .= 'We are using Finestics to collect your data. <a href="' . $policy_url . '">Learn more</a> about how Finestics collects and handle your data.</p>';
+            $notice .= ' (<a class="' . esc_attr($this->client->slug) . '-insights-data-we-collect" href="#">' . esc_html($this->client->__trans('what we collect')) . '</a>)';
+            $notice .= '<p class="description" style="display:none;">' . esc_html(implode('; ', $this->data_we_collect())) . '. ';
+            $notice .= esc_html(sprintf($this->client->__trans('The report goes to %s.'), $this->endpoint_host())) . ' <a href="' . esc_url($policy_url) . '">' . esc_html($this->client->__trans('Privacy policy')) . '</a></p>';
 
+            // Echoed through wp_kses_post() rather than printf(): the notice is not
+            // a format string, and a translation carrying a % sign would otherwise
+            // throw on PHP 8 and take the admin screen down with it.
             echo '<div class="updated"><p>';
-            printf($notice);
+            echo wp_kses_post($notice);
             echo '</p><p class="submit">';
-            echo '&nbsp;<a href="' . esc_url($optin_url) . '" class="button-primary button-large">' . $this->client->__trans('Allow') . '</a>';
-            echo '&nbsp;<a href="' . esc_url($optout_url) . '" class="button-secondary button-large">' . $this->client->__trans('No thanks') . '</a>';
+            echo '&nbsp;<a href="' . esc_url($optin_url) . '" class="button-primary button-large">' . esc_html($this->client->__trans('Allow')) . '</a>';
+            echo '&nbsp;<a href="' . esc_url($optout_url) . '" class="button-secondary button-large">' . esc_html($this->client->__trans('No thanks')) . '</a>';
             echo '</p></div>';
 
-            echo "<script type='text/javascript'>jQuery('." . $this->client->slug . "-insights-data-we-collect').on('click', function(e) {
+            echo "<script type='text/javascript'>jQuery('." . esc_js($this->client->slug) . "-insights-data-we-collect').on('click', function(e) {
                     e.preventDefault();
                     jQuery(this).parents('.updated').find('p.description').slideToggle('fast');
                 });
@@ -458,6 +464,18 @@ class Insights
      *
      * @return void
      */
+    /**
+     * The host reports are sent to, for telling people where their data goes.
+     *
+     * @return string
+     */
+    private function endpoint_host()
+    {
+        $host = wp_parse_url($this->client->endpoint(), PHP_URL_HOST);
+
+        return $host ? $host : $this->client->endpoint();
+    }
+
     public function handle_optin_optout()
     {
 
@@ -801,25 +819,40 @@ class Insights
             wp_send_json_error();
         }
 
-        $current_user = wp_get_current_user();
-
         $data = array(
             'hash' => $this->client->hash,
-            'reason_id' => sanitize_text_field($_POST['reason_id']),
-            'reason_info' => isset($_REQUEST['reason_info']) ? trim(stripslashes(sanitize_text_field($_REQUEST['reason_info']))) : '',
-            'site' => $this->get_site_name(),
-            'url' => esc_url(home_url()),
-            'admin_email' => get_option('admin_email'),
-            'user_email' => $current_user->user_email,
-            'first_name' => $current_user->first_name,
-            'last_name' => $current_user->last_name,
+            'reason_id' => sanitize_text_field(wp_unslash($_POST['reason_id'])),
+            'reason_info' => isset($_REQUEST['reason_info']) ? trim(sanitize_text_field(wp_unslash($_REQUEST['reason_info']))) : '',
+            'site' => '',
+            'url' => '',
+            'admin_email' => '',
+            'user_email' => '',
+            'first_name' => '',
+            'last_name' => '',
             'server' => $this->get_server_info(),
             'wp' => $this->get_wp_info(),
-            'ip_address' => $this->get_user_ip_address(),
+            'ip_address' => '',
             'theme' => get_stylesheet(),
             'version' => $this->client->project_version,
             'installed_at' => (int) get_option($this->client->slug . '_installed_at'),
         );
+
+        // Who is leaving is sent only by a site that opted into usage
+        // reporting, where the notice it agreed to lists these. Everyone else's
+        // feedback goes without names, email addresses, the site's address or
+        // its IP, and the IP lookup is not even made. The keys stay, empty, so
+        // the receiver gets the shape it always has.
+        if ($this->tracking_allowed()) {
+            $current_user = wp_get_current_user();
+
+            $data['site'] = $this->get_site_name();
+            $data['url'] = esc_url(home_url());
+            $data['admin_email'] = get_option('admin_email');
+            $data['user_email'] = $current_user->user_email;
+            $data['first_name'] = $current_user->first_name;
+            $data['last_name'] = $current_user->last_name;
+            $data['ip_address'] = $this->get_user_ip_address();
+        }
 
         // Add metadata
         if ($extra = $this->get_extra_data()) {
@@ -866,9 +899,17 @@ class Insights
                         <?php } ?>
                     </ul>
                     <p class="wd-dr-modal-reasons-bottom">
-                        We never share your data to any third party. This data will help us to troubleshoot the problems and
-                        make product improvements. Learn more about how WPGrids handles your data
+                        <?php
+                        if ($this->tracking_allowed()) {
+                            /* translators: %s: host the feedback is sent to. */
+                            $convertpro_feedback_note = __('Your answer is sent to us at %s along with the weekly usage report you agreed to, which includes the site admin\'s name and email, so we can follow up. We don\'t pass it on to anyone else.', 'convertpro');
+                        } else {
+                            /* translators: %s: host the feedback is sent to. */
+                            $convertpro_feedback_note = __('Your answer is sent to us at %s along with your WordPress and PHP versions. No names, email addresses or IP addresses go with it.', 'convertpro');
+                        }
 
+                        echo esc_html(sprintf($convertpro_feedback_note, $this->endpoint_host()));
+                        ?>
                     </p>
                 </div>
 

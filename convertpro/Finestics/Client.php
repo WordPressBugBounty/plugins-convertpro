@@ -1,5 +1,6 @@
 <?php
-namespace Finestics;
+// The bundled usage-reporting SDK, which carries its own vendor prefix.
+namespace Finestics; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedNamespaceFound
 if (!defined('ABSPATH')) {
     exit; // Called directly, nothing to do here.
 }
@@ -119,6 +120,7 @@ class Client
      */
     public function endpoint()
     {
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the SDK's own hook, prefixed with its vendor name.
         $endpoint = apply_filters('finestics_endpoint', 'https://analytics.thefarhan.com/api/data-receiver');
 
         return trailingslashit($endpoint);

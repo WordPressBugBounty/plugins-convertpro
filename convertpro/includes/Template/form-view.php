@@ -3,6 +3,9 @@
 if (!defined('ABSPATH')) {
     exit; // Called directly, nothing to do here.
 }
+// This template is required from inside a Controller method, so the variables
+// it sets are local to that method, not globals.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 
 // A save that was turned away comes back as a fresh page load, so what someone
 // typed only survives if it was put aside first. Fill the form from that when

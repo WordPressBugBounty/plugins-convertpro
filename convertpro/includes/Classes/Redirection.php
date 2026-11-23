@@ -205,7 +205,7 @@ class Redirection
             return false;
         }
 
-        wp_redirect(convertpro_forward_query_string($target));
+        wp_safe_redirect(convertpro_forward_query_string($target));
         exit;
     }
 
@@ -312,7 +312,7 @@ class Redirection
         // store cookie value
         $this->store_visit_data(sanitize_text_field(wp_unslash($_COOKIE['convert_pro_uid'])), $variation->id, $testid);
 
-        wp_redirect(convertpro_forward_query_string($target));
+        wp_safe_redirect(convertpro_forward_query_string($target));
         exit();
     }
 
@@ -365,9 +365,9 @@ class Redirection
         //  phpcs:ignore WordPress.DB.DirectDatabaseQuery
         global $wpdb;
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
         $run = convertpro_get_test_run($testid);
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching -- has to read the current row; a cached answer would count a returning visitor twice.
         $query = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}convertpro_interactions
      WHERE splittest_id = %d

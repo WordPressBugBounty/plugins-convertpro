@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitff7d27e137fef6de57e6bb5705260827
+class ComposerStaticInit9731f4bf2a8deaf8a6dfe191b8c55b52
 {
     public static $files = array (
         'cba3010691509232528ee2ddd1c30eef' => __DIR__ . '/../..' . '/includes/function.php',
@@ -25,16 +25,6 @@ class ComposerStaticInitff7d27e137fef6de57e6bb5705260827
         ),
     );
 
-    public static $prefixesPsr0 = array (
-        'K' =>
-        array (
-            'KubAT\\PhpSimple\\HtmlDomParser' =>
-            array (
-                0 => __DIR__ . '/..' . '/kub-at/php-simple-html-dom-parser/src',
-            ),
-        ),
-    );
-
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'ConvertPro\\Admin' => __DIR__ . '/../..' . '/includes/Admin.php',
@@ -47,16 +37,14 @@ class ComposerStaticInitff7d27e137fef6de57e6bb5705260827
         'ConvertPro\\Classes\\Storedatabase' => __DIR__ . '/../..' . '/includes/Classes/Storedatabase.php',
         'ConvertPro\\Controller\\Controller' => __DIR__ . '/../..' . '/includes/Controller/Controller.php',
         'ConvertPro\\DataBase\\Database' => __DIR__ . '/../..' . '/includes/DataBase/Database.php',
-        'KubAT\\PhpSimple\\HtmlDomParser' => __DIR__ . '/..' . '/kub-at/php-simple-html-dom-parser/src/KubAT/PhpSimple/HtmlDomParser.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitff7d27e137fef6de57e6bb5705260827::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitff7d27e137fef6de57e6bb5705260827::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInitff7d27e137fef6de57e6bb5705260827::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInitff7d27e137fef6de57e6bb5705260827::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit9731f4bf2a8deaf8a6dfe191b8c55b52::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit9731f4bf2a8deaf8a6dfe191b8c55b52::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit9731f4bf2a8deaf8a6dfe191b8c55b52::$classMap;
 
         }, null, ClassLoader::class);
     }

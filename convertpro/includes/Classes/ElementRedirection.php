@@ -6,15 +6,8 @@ if (!defined('ABSPATH')) {
 }
 
 
-use KubAT\PhpSimple\HtmlDomParser;
-use simplehtmldom;
-use simplehtmldom\HtmlNode;
-use simplehtmldom\HtmlWeb;
-
 class ElementRedirection
 {
-
-    private $html_parser;
 
     function __construct()
     {
@@ -24,58 +17,52 @@ class ElementRedirection
         // add_action('wp', [$this, 'autoSelectElement'], 1);
         // add_action('wp_enqueue_scripts', [$this, 'addElementStyles']);
 
-        add_action('init', array($this, 'start_buffer'), PHP_INT_MAX);
+        // On template_redirect rather than init, so the buffer only wraps
+        // requests that are about to render a template. A REST call, admin-ajax,
+        // wp-cron and anything else that never gets that far is left alone.
+        add_action('template_redirect', array($this, 'start_buffer'), 0);
         add_action('template_redirect', [$this, 'update_conversion']);
-
-
-
-
-        // $this->html_parser = new HtmlWeb();
-
     }
 
     public function start_buffer()
     {
         ob_start(array($this, 'manipulate_html'));
-
-        // var_dump(ob_get_clean());
     }
 
+    /**
+     * Hide the versions this visitor was not given.
+     *
+     * The page is edited in place: the elements carrying another version's class
+     * are cut out and **every other byte comes back exactly as the theme wrote
+     * it**. Nothing is parsed into a document and written out again.
+     *
+     * That used to be how this worked, and it is what CVE-2026-110528 was about.
+     * The whole page went through a bundled HTML parser, which lifts comments,
+     * scripts and styles out before parsing and pastes them back afterwards
+     * without regard for where the placeholder ended up. A visitor's own comment
+     * could therefore be pasted into an attribute of some other element, close
+     * that attribute, and have the rest of it read as markup. Nothing the plugin
+     * escaped on the way in could prevent it, because the damage happened on the
+     * way out.
+     *
+     * @param string $buffer The whole response, as the theme produced it.
+     * @return string
+     */
     public function manipulate_html($buffer)
     {
         global $wpdb;
 
-        // The buffer opens on init, so it catches everything the site sends that
-        // is not an admin screen: the RSS feed, the XML sitemap, REST responses.
-        // Running those through an HTML parser rewrites them — feeds came back
-        // with <pubDate> lowercased to <pubdate>, which XML readers will not
-        // accept. Only touch something that is actually an HTML page. The XML
-        // check is separate because the sitemap stylesheet is XML that happens
-        // to contain an <html> element.
+        // The buffer catches whatever the request sends, so only touch something
+        // that is actually an HTML page. The XML check is separate because the
+        // sitemap stylesheet is XML that happens to contain an <html> element.
         if (false === stripos($buffer, '<html') || 0 === strpos(ltrim($buffer), '<?xml')) {
             return $buffer;
         }
 
-        // Keep line breaks. The parser strips them by default, which flattens
-        // everything inside <pre>, <code> and <textarea> onto a single line.
-        $dom = HtmlDomParser::str_get_html($buffer, true, true, DEFAULT_TARGET_CHARSET, false);
-
-        // The parser returns false for output it cannot handle — an empty buffer
-        // on shutdown, for one — and calling find() on that is a fatal error.
-        if (!$dom) {
-            return $buffer;
-        }
-
-        // Rebuilding the page through the parser is not free and not lossless, so
-        // only hand back a rebuilt page when a version was actually removed.
-        $changed = false;
-
-        $styles = '';
         $active_class = '';
         // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
         $results = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}convertpro WHERE test_type='elements' AND active = 1");
-        $output = '';
         foreach ($results as $value) {
             // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -102,39 +89,24 @@ class ElementRedirection
                     continue;
                 }
 
+                // Only sort a visitor into the test when the element it is about
+                // is actually on this page.
                 if (empty($active_class)) {
 
-                    if ($dom->find('.' . $variation->class_name)) {
+                    if (convertpro_html_has_class($buffer, $variation->class_name)) {
                         $this->autoSelectElement($value->id);
                     }
                 }
 
                 $active_class = isset($_COOKIE[$cookieName]) ? sanitize_text_field(wp_unslash($_COOKIE[$cookieName])) : '';
-                // $output .= $dom->find('body', 0)->innertext = 'hellow' . $variation->class_name;
-
 
                 if (!empty($active_class) && $variation->class_name != $active_class) {
-                    // var_dump($variation->class_name);
-                    foreach ($dom->find('.' . $variation->class_name) as $element) {
-
-                        $element->remove();
-                        $changed = true;
-                    }
+                    $buffer = convertpro_html_remove_class($buffer, $variation->class_name);
                 }
             }
         }
 
-
-
-        // Nothing was swapped out, so send the page the theme built rather than
-        // the parser's rebuild of it.
-        if (!$changed) {
-            return $buffer;
-        }
-
-        return $dom->save();
-        // return $output;
-
+        return $buffer;
     }
 
     public function update_conversion()
@@ -413,10 +385,11 @@ class ElementRedirection
     {
         global $wpdb;
 
-        // Check if there's already an interaction record
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
         $run = convertpro_get_test_run($testid);
 
+        // Check if there's already an interaction record. Has to read the
+        // current row; a cached answer would count a returning visitor twice.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $query = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT * FROM {$wpdb->prefix}convertpro_interactions

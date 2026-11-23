@@ -3,6 +3,9 @@
 if (!defined('ABSPATH')) {
     exit; // Called directly, nothing to do here.
 }
+// This template is required from inside a Controller method, so the variables
+// it sets are local to that method, not globals.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 // Add a function to handle the AJAX request
 
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- reading which test to show, capability checked by the menu.
@@ -23,7 +26,6 @@ if (!$test) {
 
 // Step 1: Retrieve Data from the Database
 global $wpdb;
-$table_name = $wpdb->prefix . 'convertpro_interactions';
 
 $results = convertpro_interactions_chart_query($test_id);
 $chart = convertpro_build_chart_datasets($results);
@@ -56,7 +58,7 @@ if (false !== $fix_max_id && $fix_max_id > 0 && $test_id) {
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
     $prefix_count = (int) $wpdb->get_var(
         $wpdb->prepare(
-            "SELECT COUNT(*) FROM {$table_name} WHERE splittest_id = %d AND run = %d AND id <= %d",
+            "SELECT COUNT(*) FROM {$wpdb->prefix}convertpro_interactions WHERE splittest_id = %d AND run = %d AND id <= %d",
             $test_id,
             $current_run,
             (int) $fix_max_id
@@ -353,7 +355,9 @@ wp_enqueue_script('chart');
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['message']) && $_GET['message'] === 'reset_success') : ?>
+            <?php
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only: only decides which notice to show.
+            if (isset($_GET['message']) && 'reset_success' === sanitize_key(wp_unslash($_GET['message']))) : ?>
                 <div class="convertpro-message convertpro-message-success">
                     <p>
                         <?php
@@ -367,8 +371,8 @@ wp_enqueue_script('chart');
                     <p>
                         <?php
                         printf(
-                            /* translators: 1: number of visitors, already formatted. 2: opening link tag. 3: closing link tag. */
                             esc_html(
+                                /* translators: 1: number of visitors, already formatted. 2: opening link tag. 3: closing link tag. */
                                 _n(
                                     'Heads up: %1$s of the visitors counted below was sorted by the old method, which did not split traffic evenly. That makes this comparison unreliable. %2$sStart a fresh run%3$s to collect clean numbers. Nothing you have already recorded gets deleted.',
                                     'Heads up: %1$s of the visitors counted below were sorted by the old method, which did not split traffic evenly. That makes this comparison unreliable. %2$sStart a fresh run%3$s to collect clean numbers. Nothing you have already recorded gets deleted.',
@@ -451,7 +455,7 @@ wp_enqueue_script('chart');
                     action: 'convertpro_get_chart_data',
                     range: range,
                     nonce: '<?php echo esc_js(wp_create_nonce('convertpro-report-nonce')); ?>',
-                    id: <?php echo (int) ( isset($_GET['id']) ? wp_unslash($_GET['id']) : 0 ); ?>
+                    id: <?php echo (int) $test_id; ?>
                 },
                 success: function(response) {
                     // Parse the JSON response
@@ -471,7 +475,7 @@ wp_enqueue_script('chart');
                     action: 'convertpro_interactions_report_ajax',
                     range: range,
                     nonce: '<?php echo esc_js(wp_create_nonce('convertpro-report-nonce')); ?>',
-                    id: <?php echo (int) ( isset($_GET['id']) ? wp_unslash($_GET['id']) : 0 ); ?>
+                    id: <?php echo (int) $test_id; ?>
                 },
                 success: function(response) {
                     // Parse the JSON response

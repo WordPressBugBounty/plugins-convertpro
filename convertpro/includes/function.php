@@ -488,15 +488,20 @@ function convertpro_prevent_page_cache()
         return;
     }
 
+    // These three names are read by the page-cache plugins themselves, so they
+    // cannot carry our prefix.
     if (!defined('DONOTCACHEPAGE')) {
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound
         define('DONOTCACHEPAGE', true);
     }
 
     if (!defined('DONOTCACHEOBJECT')) {
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound
         define('DONOTCACHEOBJECT', true);
     }
 
     if (!defined('DONOTCACHEDB')) {
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound
         define('DONOTCACHEDB', true);
     }
 
@@ -744,7 +749,7 @@ function convertpro_stash_form($test_id = 0)
     $variations = array();
 
     if (isset($_POST['test-variation']) && is_array($_POST['test-variation'])) {
-        foreach (wp_unslash($_POST['test-variation']) as $row) {
+        foreach (map_deep(wp_unslash($_POST['test-variation']), 'sanitize_text_field') as $row) {
             if (!is_array($row)) {
                 continue;
             }
@@ -805,6 +810,237 @@ function convertpro_take_form_draft($test_id = 0)
 }
 
 /**
+ * Regions whose contents are not markup and must never be read as tags.
+ *
+ * @return array
+ */
+function convertpro_html_skip_regions()
+{
+    return array(
+        array('<!--', '-->'),
+        array('<![CDATA[', ']]>'),
+        array('<?', '?>'),
+    );
+}
+
+/**
+ * Elements whose contents are text, not markup.
+ *
+ * @return array
+ */
+function convertpro_html_raw_text_tags()
+{
+    return array('script', 'style', 'textarea', 'title');
+}
+
+/**
+ * Elements that never have a closing tag.
+ *
+ * @return array
+ */
+function convertpro_html_void_tags()
+{
+    return array(
+        'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+        'link', 'meta', 'param', 'source', 'track', 'wbr',
+    );
+}
+
+/**
+ * Find the end of a start tag, respecting quoted attribute values.
+ *
+ * @param string $html
+ * @param int    $from Offset of the '<'.
+ * @return int|false Offset just past the '>', or false if the tag never closes.
+ */
+function convertpro_html_tag_end($html, $from)
+{
+    $len = strlen($html);
+    $quote = '';
+
+    for ($i = $from + 1; $i < $len; $i++) {
+        $ch = $html[$i];
+
+        if ('' !== $quote) {
+            if ($ch === $quote) {
+                $quote = '';
+            }
+            continue;
+        }
+
+        if ('"' === $ch || "'" === $ch) {
+            $quote = $ch;
+            continue;
+        }
+
+        if ('>' === $ch) {
+            return $i + 1;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Does this start tag carry the class, as a whole token?
+ *
+ * @param string $tag   The start tag, including its angle brackets.
+ * @param string $class
+ * @return bool
+ */
+function convertpro_html_tag_has_class($tag, $class)
+{
+    if (!preg_match('/\sclass\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s"\'=<>`]+))/i', $tag, $m)) {
+        return false;
+    }
+
+    $value = isset($m[4]) && '' !== $m[4] ? $m[4] : (isset($m[3]) && '' !== $m[3] ? $m[3] : $m[2]);
+
+    return (bool) preg_match('/(^|\s)' . preg_quote($class, '/') . '(\s|$)/', $value);
+}
+
+/**
+ * The byte ranges of the outermost elements carrying a class.
+ *
+ * @param string $html
+ * @param string $class
+ * @return array List of array(start, end) offsets, in document order.
+ */
+function convertpro_html_class_spans($html, $class)
+{
+    $spans = array();
+    $stack = array();
+    $len = strlen($html);
+    $pos = 0;
+    $skip = convertpro_html_skip_regions();
+    $raw = convertpro_html_raw_text_tags();
+    $void = convertpro_html_void_tags();
+    $depth_of_match = null;
+
+    while (($lt = strpos($html, '<', $pos)) !== false) {
+        $skipped = false;
+
+        foreach ($skip as $pair) {
+            if (0 === substr_compare($html, $pair[0], $lt, strlen($pair[0]))) {
+                $close = strpos($html, $pair[1], $lt + strlen($pair[0]));
+                $pos = (false === $close) ? $len : $close + strlen($pair[1]);
+                $skipped = true;
+                break;
+            }
+        }
+
+        if ($skipped) {
+            continue;
+        }
+
+        if (!preg_match('/^<(\/?)([a-zA-Z][a-zA-Z0-9:-]*)/', substr($html, $lt, 64), $m)) {
+            $pos = $lt + 1;
+            continue;
+        }
+
+        $is_close = ('/' === $m[1]);
+        $name = strtolower($m[2]);
+        $end = convertpro_html_tag_end($html, $lt);
+
+        if (false === $end) {
+            break;
+        }
+
+        $tag = substr($html, $lt, $end - $lt);
+        $pos = $end;
+
+        if ($is_close) {
+            for ($i = count($stack) - 1; $i >= 0; $i--) {
+                if ($stack[$i]['name'] !== $name) {
+                    continue;
+                }
+
+                if (null !== $depth_of_match && $i === $depth_of_match) {
+                    $spans[] = array($stack[$i]['start'], $end);
+                    $depth_of_match = null;
+                }
+
+                $stack = array_slice($stack, 0, $i);
+                break;
+            }
+
+            continue;
+        }
+
+        // Elements whose body is text: step over it so nothing inside is read
+        // as markup. A class on the tag itself still counts.
+        if (in_array($name, $raw, true)) {
+            $matched = (null === $depth_of_match) && convertpro_html_tag_has_class($tag, $class);
+            $close_at = stripos($html, '</' . $name, $end);
+            $body_end = (false === $close_at) ? $len : convertpro_html_tag_end($html, $close_at);
+            $body_end = (false === $body_end) ? $len : $body_end;
+
+            if ($matched) {
+                $spans[] = array($lt, $body_end);
+            }
+
+            $pos = $body_end;
+            continue;
+        }
+
+        $self_closing = ('/>' === substr($tag, -2)) || in_array($name, $void, true);
+
+        if ($self_closing) {
+            if (null === $depth_of_match && convertpro_html_tag_has_class($tag, $class)) {
+                $spans[] = array($lt, $end);
+            }
+
+            continue;
+        }
+
+        $stack[] = array('name' => $name, 'start' => $lt);
+
+        if (null === $depth_of_match && convertpro_html_tag_has_class($tag, $class)) {
+            $depth_of_match = count($stack) - 1;
+        }
+    }
+
+    return $spans;
+}
+
+/**
+ * Remove every element carrying a class, leaving the rest of the page untouched.
+ *
+ * @param string $html
+ * @param string $class
+ * @param int    $removed Set to the number of elements removed.
+ * @return string
+ */
+function convertpro_html_remove_class($html, $class, &$removed = 0)
+{
+    $spans = convertpro_html_class_spans($html, $class);
+    $removed = count($spans);
+
+    for ($i = $removed - 1; $i >= 0; $i--) {
+        $html = substr($html, 0, $spans[$i][0]) . substr($html, $spans[$i][1]);
+    }
+
+    return $html;
+}
+
+/**
+ * Is there an element carrying this class?
+ *
+ * @param string $html
+ * @param string $class
+ * @return bool
+ */
+function convertpro_html_has_class($html, $class)
+{
+    // Cheap reject first: the class name must appear literally somewhere.
+    if (false === strpos($html, $class)) {
+        return false;
+    }
+
+    return array() !== convertpro_html_class_spans($html, $class);
+}
+
+/**
  * Build a run-scoped cookie name, e.g. convert_pro_test_5_r2.
  *
  * @param string $prefix  Cookie prefix, including the trailing underscore.
@@ -820,8 +1056,12 @@ function convertpro_interactions_report_html()
 {
 
 
+    // Read-only. The AJAX route checks the capability and the report nonce
+    // before calling this; the first render is the admin screen itself.
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended
     $id = isset($_GET['id']) ? intval(sanitize_text_field(wp_unslash($_GET['id']))) : 0;
     $range = isset($_GET['range']) ? sanitize_text_field(wp_unslash(($_GET['range']))) : 7;
+    // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
     $repo = new Repo();
     $results = $repo->getVariations($id);

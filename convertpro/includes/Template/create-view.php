@@ -3,6 +3,9 @@
 if (!defined('ABSPATH')) {
     exit; // Called directly, nothing to do here.
 }
+// This template is required from inside a Controller method, so the variables
+// it sets are local to that method, not globals.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 $scope = "create";
 $text = esc_html__("Create New Test", "convertpro");
 $test = (object) [

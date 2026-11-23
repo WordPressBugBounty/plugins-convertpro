@@ -5,7 +5,7 @@ use Finestics\Client;
  * Plugin Name: EasyTest - Simplify A/B Testing (Former ConvertPro)
  * Plugin URI: https://wpgrids.com/
  * Description: EasyTest allows you to ab testing.
- * Version: 1.0.5
+ * Version: 1.0.6
  * Author: wpgrids
  * Author URI: https://profiles.wordpress.org/wpgrids/
  * Text Domain: convertpro
@@ -40,7 +40,7 @@ final class ConvertPro
      *
      * @var string
      */
-    public $version = '1.0.5';
+    public $version = '1.0.6';
 
     /**
      * Holds various class instances
@@ -145,7 +145,9 @@ final class ConvertPro
             require_once __DIR__. '/Finestics/Client.php';
         }
 
-        $init_finestics = new Finestics\Client('convertpro', 'ConvertPro', __FILE__);
+        // The name only appears in the opt-in notice; the slug is what reports
+        // are filed under, so it stays convertpro.
+        $init_finestics = new Finestics\Client('convertpro', 'EasyTest', __FILE__);
 
         // Rides the existing opt-in: nothing is sent unless the site owner turned
         // usage reporting on. Counts and timestamps only — see
@@ -241,7 +243,7 @@ final class ConvertPro
         }
 
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        return (bool) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+        return (bool) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}convertpro");
     }
 
     /**
@@ -318,11 +320,14 @@ final class ConvertPro
         if (!get_option('convertpro_created_at_default')) {
             global $wpdb;
 
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+            // A one-off repair of a column default this plugin created
+            // wrongly, guarded by the option below so it runs once.
+            // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
             $wpdb->query(
                 "ALTER TABLE {$wpdb->prefix}convertpro_interactions
                 MODIFY created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
             );
+            // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 
             update_option('convertpro_created_at_default', 1);
         }
@@ -462,9 +467,6 @@ final class ConvertPro
 
         add_action('init', array($this, 'init_classes'));
 
-        // Localize our plugin
-        add_action('init', array($this, 'localization_setup'));
-
         if ($this->is_request('admin')) {
             add_action('admin_notices', array($this, 'looping_tests_notice'));
         }
@@ -489,16 +491,6 @@ final class ConvertPro
 
         // $this->container['api'] = new AbTest\Api();
         $this->container['assets'] = new Assets();
-    }
-
-    /**
-     * Initialize plugin for localization
-     *
-     * @uses load_plugin_textdomain()
-     */
-    public function localization_setup()
-    {
-        load_plugin_textdomain('convertpro', false, dirname(plugin_basename(__FILE__)) . '/languages/');
     }
 
     /**

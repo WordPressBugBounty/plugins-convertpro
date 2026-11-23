@@ -168,7 +168,7 @@ class Storedatabase
             return '';
         }
 
-        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- callers verify the nonce.
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- callers verify the nonce; sanitized just below with wp_strip_all_tags(), because sanitize_text_field() would drop percent-escapes from a URL fragment.
         $selector = isset($_POST['test-conversion-selector']) ? wp_unslash($_POST['test-conversion-selector']) : '';
 
         // A selector is markup-adjacent, so strip tags and keep it to one line.

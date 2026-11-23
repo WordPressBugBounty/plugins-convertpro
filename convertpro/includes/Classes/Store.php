@@ -81,7 +81,7 @@ class Store
         }
 
         $variations = (isset($_POST['test-variation']) && is_array($_POST['test-variation']))
-            ? wp_unslash($_POST['test-variation'])
+            ? map_deep(wp_unslash($_POST['test-variation']), 'sanitize_text_field')
             : array();
 
         if (count($variations) < 2) {
@@ -319,7 +319,7 @@ class Store
             ? admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . (int) $test_id)
             : admin_url('admin.php?page=convertpro-settings&scope=test&action=create');
 
-        wp_redirect($url . '&message=' . rawurlencode($message));
+        wp_safe_redirect($url . '&message=' . rawurlencode($message));
         exit;
     }
 
@@ -361,14 +361,14 @@ class Store
         }
 
         if (isset($_POST['test-variation']) && is_array($_POST['test-variation'])) {
-            $test_variations = wp_unslash($_POST['test-variation']);
+            $test_variations = map_deep(wp_unslash($_POST['test-variation']), 'sanitize_text_field');
             foreach ($test_variations as $variation) {
                 $variation['pageId'] = isset($variation['page-id']) ? (int)($variation['page-id']) : '';
                 $db->CreateTestVariation($id, $variation);
             }
         }
         // Check if the data was stored successfully
-        wp_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . $id . '&message=store_success'));
+        wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . $id . '&message=store_success'));
         exit;
     }
 
@@ -381,11 +381,11 @@ class Store
     {
         // write a code here
         if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'convertpro-nonce') || !current_user_can('manage_options')) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
+            wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
             exit;
         }
         if (!isset($_GET['id'])) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=error_delete'));
+            wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=error_delete'));
             exit;
         }
 
@@ -394,7 +394,7 @@ class Store
         $db = new Repo();
         $db->TestDelete($id);
 
-        wp_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=index&message=delete_success'));
+        wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=index&message=delete_success'));
         exit;
     }
 
@@ -410,7 +410,7 @@ class Store
     public function RepoToggleActive()
     {
         if (!isset($_GET['id'])) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=error_delete'));
+            wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=error_delete'));
             exit;
         }
 
@@ -419,7 +419,7 @@ class Store
         if (!isset($_GET['_wpnonce'])
             || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'convertpro-toggle-test_' . $id)
             || !current_user_can('manage_options')) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
+            wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
             exit;
         }
 
@@ -439,7 +439,7 @@ class Store
             array('id' => $id)
         );
 
-        wp_redirect(admin_url('admin.php?page=convertpro-settings&message=' . ($now_active ? 'resume_success' : 'pause_success')));
+        wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=' . ($now_active ? 'resume_success' : 'pause_success')));
         exit;
     }
 
@@ -468,7 +468,7 @@ class Store
         if (!isset($_GET['_wpnonce'])
             || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'convertpro-review')
             || !current_user_can('manage_options')) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
+            wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
             exit;
         }
 
@@ -496,7 +496,15 @@ class Store
         convertpro_review_update($changes);
 
         if ('clicked' === $answer) {
-            wp_redirect(convertpro_review_url());
+            // The one redirect that leaves the site: the review form on
+            // WordPress.org. Allow that host for this request only.
+            add_filter('allowed_redirect_hosts', function ($hosts) {
+                $hosts[] = 'wordpress.org';
+
+                return $hosts;
+            });
+
+            wp_safe_redirect(convertpro_review_url());
             exit;
         }
 
@@ -504,14 +512,14 @@ class Store
             ? admin_url('admin.php?page=convertpro-settings&scope=test&action=report&id=' . $id)
             : admin_url('admin.php?page=convertpro-settings');
 
-        wp_redirect($back);
+        wp_safe_redirect($back);
         exit;
     }
 
     public function RepoReset()
     {
         if (!isset($_GET['id'])) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=error_reset'));
+            wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=error_reset'));
             exit;
         }
 
@@ -520,7 +528,7 @@ class Store
         if (!isset($_GET['_wpnonce'])
             || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce'])), 'convertpro-reset-test_' . $id)
             || !current_user_can('manage_options')) {
-            wp_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
+            wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&message=security_error'));
             exit;
         }
 
@@ -539,7 +547,7 @@ class Store
             )
         );
 
-        wp_redirect(admin_url('admin.php?page=convertpro-settings&scope=statistics&action=report&id=' . $id . '&message=reset_success'));
+        wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&scope=statistics&action=report&id=' . $id . '&message=reset_success'));
         exit;
     }
 
@@ -579,7 +587,7 @@ class Store
         // version to a test that already existed silently did nothing, and
         // removing one only removed it from the screen.
         $submitted = (isset($_POST['test-variation']) && is_array($_POST['test-variation']))
-            ? wp_unslash($_POST['test-variation'])
+            ? map_deep(wp_unslash($_POST['test-variation']), 'sanitize_text_field')
             : array();
 
         $before = $this->saved_shares($test_id);
@@ -616,7 +624,7 @@ class Store
             $this->restart_cycle($test_id);
         }
 
-        wp_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . $test_id . '&message=save_success'));
+        wp_safe_redirect(admin_url('admin.php?page=convertpro-settings&scope=test&action=edit&id=' . $test_id . '&message=save_success'));
         exit;
     }
 }

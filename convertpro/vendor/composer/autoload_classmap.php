@@ -17,5 +17,4 @@ return array(
     'ConvertPro\\Classes\\Storedatabase' => $baseDir . '/includes/Classes/Storedatabase.php',
     'ConvertPro\\Controller\\Controller' => $baseDir . '/includes/Controller/Controller.php',
     'ConvertPro\\DataBase\\Database' => $baseDir . '/includes/DataBase/Database.php',
-    'KubAT\\PhpSimple\\HtmlDomParser' => $vendorDir . '/kub-at/php-simple-html-dom-parser/src/KubAT/PhpSimple/HtmlDomParser.php',
 );
